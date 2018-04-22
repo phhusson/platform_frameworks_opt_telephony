@@ -5188,7 +5188,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static SignalStrength convertHalSignalStrength(
             android.hardware.radio.V1_0.SignalStrength signalStrength) {
 
-	    String hardware = android.os.Syste,Properties.get("ro.hardware", "");
+	    String hardware = android.os.SystemProperties.get("ro.hardware", "");
         if(hardware.contains("hi3660") || hardware.contains("hi6250") || hardware.contains("hi3670") || hardware.contains("kirin*"))
             return convertHalSignalStrengthHuawei(signalStrength);
 
