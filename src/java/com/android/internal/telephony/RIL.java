@@ -332,7 +332,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     boolean mIsMobileNetworkSupported;
     RadioResponse mRadioResponse;
+    MtkRadioResponse mMtkRadioResponse;
     RadioIndication mRadioIndication;
+    MtkRadioIndication mMtkRadioIndication;
     volatile IRadio mRadioProxy = null;
     OemHookResponse mOemHookResponse;
     OemHookIndication mOemHookIndication;
@@ -518,7 +520,15 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             if (mRadioProxy != null) {
                 mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
                         mRadioProxyCookie.incrementAndGet());
-                mRadioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
+                if(vendor.mediatek.hardware.radio.V2_0.IRadio.castFrom(mRadioProxy) != null) {
+                    if(mMtkRadioResponse == null)
+                        mMtkRadioResponse = new MtkRadioResponse(this, mRadioResponse);
+                    if(mMtkRadioIndication == null)
+                        mMtkRadioIndication = new MtkRadioIndication(this, mRadioIndication);
+                    mRadioProxy.setResponseFunctions(mMtkRadioResponse, mMtkRadioIndication);
+                } else {
+                    mRadioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
+                }
             } else {
                 riljLoge("getRadioProxy: mRadioProxy == null");
             }
