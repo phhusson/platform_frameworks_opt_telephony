@@ -24,6 +24,7 @@ import android.annotation.Nullable;
 import android.app.PendingIntent;
 import android.net.ConnectivityManager;
 import android.net.KeepalivePacketData;
+import android.net.IpPrefix;
 import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
@@ -1393,6 +1394,22 @@ public class DataConnection extends StateMachine {
                 }
 
                 for (InetAddress gateway : response.getGatewayAddresses()) {
+                    if(response.getAddresses().size()>0) {
+                        //TODO:
+                        // - IPv6
+                        // - Multiple addresses
+                        // - Check for non-trivial prefix length
+                        LinkAddress la = response.getAddresses().get(0);
+                        if(la.getNetworkPrefixLength() == 32 &&
+                            gateway instanceof java.net.Inet4Address) {
+                            if(!gateway.isAnyLocalAddress()) {
+                                linkProperties.addRoute(new RouteInfo(
+                                            new IpPrefix(gateway, 32),
+                                            InetAddress.getByName("0.0.0.0"),
+                                            response.getInterfaceName()));
+                            }
+                        }
+                    }
                     // Allow 0.0.0.0 or :: as a gateway;
                     // this indicates a point-to-point interface.
                     linkProperties.addRoute(new RouteInfo(gateway));
