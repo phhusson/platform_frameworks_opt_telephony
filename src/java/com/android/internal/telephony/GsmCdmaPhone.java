@@ -2568,7 +2568,11 @@ public class GsmCdmaPhone extends Phone {
             // Complete pending USSD
 
             if (isUssdRelease) {
-                found.onUssdRelease();
+                if (SystemProperties.getBoolean("persist.sys.radio.huawei", false)) {
+                    found.onUssdFinished(ussdMessage, isUssdRequest);
+                } else {
+                    found.onUssdRelease();
+                }
             } else if (isUssdError) {
                 found.onUssdFinishedError();
             } else {
