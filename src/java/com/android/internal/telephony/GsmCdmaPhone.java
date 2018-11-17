@@ -2313,7 +2313,7 @@ public class GsmCdmaPhone extends Phone {
             // Complete pending USSD
 
             if (isUssdRelease) {
-                if (SystemProperties.getBoolean("persist.sys.radio.huawei", false)) {
+                if (SystemProperties.getBoolean("persist.sys.radio.ussd.fix", false)) {
                     found.onUssdFinished(ussdMessage, isUssdRequest);
                 } else {
                     found.onUssdRelease();
