@@ -64,7 +64,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
     //***** Constants
 
-    public static final int MAX_CONNECTIONS_GSM = 19;   //7 allowed in GSM + 12 from IMS for SRVCC
+    public static final int MAX_CONNECTIONS_GSM = android.os.SystemProperties.getInt("persist.sys.phh.radio.max_connections_gsm", 19);   //7 allowed in GSM + 12 from IMS for SRVCC
     private static final int MAX_CONNECTIONS_PER_CALL_GSM = 5; //only 5 connections allowed per call
 
     private static final int MAX_CONNECTIONS_CDMA = 8;
