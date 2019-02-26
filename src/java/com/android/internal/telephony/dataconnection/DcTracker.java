@@ -3308,11 +3308,13 @@ public class DcTracker extends Handler {
     }
 
     private void setDataProfilesAsNeeded() {
+        boolean forceCognitive = SystemProperties.getBoolean("persist.sys.phh.radio.force_cognitive", false);
+
         if (DBG) log("setDataProfilesAsNeeded");
         if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
             ArrayList<DataProfile> dps = new ArrayList<DataProfile>();
             for (ApnSetting apn : mAllApnSettings) {
-                if (apn.modemCognitive) {
+                if (apn.modemCognitive || forceCognitive) {
                     DataProfile dp = createDataProfile(apn);
                     if (!dps.contains(dp)) {
                         dps.add(dp);
