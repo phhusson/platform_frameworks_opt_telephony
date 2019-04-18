@@ -1809,7 +1809,7 @@ public class RadioResponse extends IRadioResponse.Stub {
     }
 
 
-    private void responseVoid(RadioResponseInfo responseInfo) {
+    void responseVoid(RadioResponseInfo responseInfo) {
         RILRequest rr = mRil.processResponse(responseInfo);
 
         if (rr != null) {
