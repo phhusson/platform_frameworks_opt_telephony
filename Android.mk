@@ -34,6 +34,8 @@ LOCAL_STATIC_JAVA_LIBRARIES := \
     android.hardware.radio.deprecated-V1.0-java \
     android.hidl.base-V1.0-java
 
+LOCAL_STATIC_JAVA_LIBRARIES += vendor.mediatek.hardware.radio-V2.0-java
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := telephony-common
 
