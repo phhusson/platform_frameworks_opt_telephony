@@ -194,6 +194,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
     final AtomicLong mRadioProxyCookie = new AtomicLong(0);
     final RadioProxyDeathRecipient mRadioProxyDeathRecipient;
     final RilHandler mRilHandler;
+    vendor.mediatek.hardware.radio.V2_0.IRadioResponse mMtkRadioResponse;
+    vendor.mediatek.hardware.radio.V2_0.IRadioIndication mMtkRadioIndication;
+    volatile vendor.mediatek.hardware.radio.V2_0.IRadio mMtkRadioProxy = null;
 
     //***** Events
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
@@ -390,6 +393,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
             }
         }
 
+        if (mRadioProxy != null) {
+            try {
+                mMtkRadioProxy =
+                    vendor.mediatek.hardware.radio.V2_0.IRadio.getService(
+                        HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
+                if (mMtkRadioProxy != null) {
+                    if (mMtkRadioResponse == null && mMtkRadioIndication == null) {
+                        mMtkRadioResponse = new MtkRadioResponse(this, mRadioResponse);
+                        mMtkRadioIndication = new MtkRadioIndication(this, mRadioIndication);
+                    }
+                    mMtkRadioProxy.setResponseFunctionsMtk(mMtkRadioResponse, mMtkRadioIndication);
+                }
+            } catch (RemoteException | RuntimeException e) {
+                riljLog("MTK RadioProxy is not available");
+            }
+        }
         return mRadioProxy;
     }
 
@@ -5551,5 +5570,24 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 signalStrength.tdScdma.rscp,
                 signalStrength.wcdma.base.signalStrength,
                 signalStrength.wcdma.rscp);
+    }
+
+    void setCallIndication(int callId, int seqNo) {
+        // Ensure that mMtkRadioProxy is updated.
+        IRadio radioProxy = getRadioProxy(null);
+        if (mMtkRadioProxy != null) {
+            RILRequest rr = obtainRequest(-1, null, mRILDefaultWorkSource);
+
+            if (RILJ_LOGD) {
+                riljLog(rr.serialString() + "> " + "setCallIndication");
+            }
+
+            try {
+                mMtkRadioProxy.setCallIndication(
+                    rr.mSerial, 0 /* 0: allowed, 1: disallowed */, callId, seqNo);
+            } catch (RemoteException | RuntimeException e) {
+                handleRadioProxyExceptionForRR(rr, "setCallIndication", e);
+            }
+        }
     }
 }
