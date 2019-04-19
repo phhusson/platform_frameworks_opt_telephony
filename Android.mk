@@ -29,6 +29,8 @@ LOCAL_JAVA_LIBRARIES := voip-common ims-common services bouncycastle
 LOCAL_STATIC_JAVA_LIBRARIES := android.hardware.radio-V1.1-java-static \
     android.hardware.radio.deprecated-V1.0-java-static
 
+LOCAL_STATIC_JAVA_LIBRARIES += vendor.mediatek.hardware.radio-V2.0-java-static
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := telephony-common
 LOCAL_PROTOC_OPTIMIZE_TYPE := nano
