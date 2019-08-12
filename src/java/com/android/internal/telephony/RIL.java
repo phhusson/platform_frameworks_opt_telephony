@@ -197,6 +197,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     vendor.mediatek.hardware.radio.V2_0.IRadioResponse mMtkRadioResponse;
     vendor.mediatek.hardware.radio.V2_0.IRadioIndication mMtkRadioIndication;
     volatile vendor.mediatek.hardware.radio.V2_0.IRadio mMtkRadioProxy = null;
+    volatile vendor.samsung.hardware.radio.V1_2.IRadio mSamsungRadioProxy = null;
 
     //***** Events
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
@@ -368,9 +369,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return mRadioProxy;
         }
 
+        String halName = HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId];
+
+            try {
+                mSamsungRadioProxy = vendor.samsung.hardware.radio.V1_2.IRadio.getService(halName);
+                mRadioProxy = mSamsungRadioProxy;
+                Rlog.e("PHH", "Got samsung radio proxy " + mSamsungRadioProxy);
+                if(mSamsungRadioProxy != null) {
+                    Rlog.e("PHH", "Setting response");
+                mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
+                        mRadioProxyCookie.incrementAndGet());
+                    mSamsungRadioProxy.setResponseFunctions(
+                            new SamsungRadioResponse(this, mRadioResponse),
+                            new SamsungRadioIndication(this, mRadioIndication)
+                    );
+                }
+                return mRadioProxy;
+            } catch(Exception e) {
+                Rlog.e("PHH", "Failed getting samsung hardware radio", e);
+            }
+
         try {
-            mRadioProxy = IRadio.getService(HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId],
-                    true);
+            mRadioProxy = IRadio.getService(halName, true);
             if (mRadioProxy != null) {
                 mRadioProxy.linkToDeath(mRadioProxyDeathRecipient,
                         mRadioProxyCookie.incrementAndGet());
@@ -396,8 +416,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (mRadioProxy != null) {
             try {
                 mMtkRadioProxy =
-                    vendor.mediatek.hardware.radio.V2_0.IRadio.getService(
-                        HIDL_SERVICE_NAME[mPhoneId == null ? 0 : mPhoneId]);
+                    vendor.mediatek.hardware.radio.V2_0.IRadio.getService(halName);
                 if (mMtkRadioProxy != null) {
                     if (mMtkRadioResponse == null && mMtkRadioIndication == null) {
                         mMtkRadioResponse = new MtkRadioResponse(this, mRadioResponse);
@@ -408,6 +427,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             } catch (RemoteException | RuntimeException e) {
                 riljLog("MTK RadioProxy is not available");
             }
+
         }
         return mRadioProxy;
     }
