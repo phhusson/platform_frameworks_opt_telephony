@@ -71,6 +71,7 @@ import android.os.HwBinder;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.os.SystemProperties;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -4829,7 +4830,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     for (DataProfile dp : dps) {
                         // For v1.0 to v1.2, we only send data profiles that has the persistent
                         // (a.k.a modem cognitive) bit set to true.
-                        if (dp.isPersistent()) {
+                        boolean forceCognitive = SystemProperties.getBoolean("persist.sys.phh.radio.force_cognitive", false);
+                        if (dp.isPersistent() || forceCognitive) {
                             dpis.add(convertToHalDataProfile10(dp));
                         }
                     }
