@@ -3963,7 +3963,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     for (DataProfile dp : dps) {
                         // For v1.0 to v1.2, we only send data profiles that has the persistent
                         // (a.k.a modem cognitive) bit set to true.
-                        if (dp.isPersistent()) {
+                        boolean forceCognitive = SystemProperties.getBoolean("persist.sys.phh.radio.force_cognitive", false);
+                        if (dp.isPersistent() || forceCognitive) {
                             dpis.add(convertToHalDataProfile10(dp));
                         }
                     }
