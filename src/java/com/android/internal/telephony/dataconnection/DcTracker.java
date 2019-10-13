@@ -1890,8 +1890,9 @@ public class DcTracker extends Handler {
         }
 
         // profile id is only meaningful when the profile is persistent on the modem.
+        boolean forceCognitive = SystemProperties.getBoolean("persist.sys.phh.radio.force_cognitive", false);
         int profileId = DATA_PROFILE_INVALID;
-        if (apnSetting.isPersistent()) {
+        if (apnSetting.isPersistent() || forceCognitive) {
             profileId = apnSetting.getProfileId();
             if (profileId == DATA_PROFILE_DEFAULT) {
                 profileId = getApnProfileID(apnContext.getApnType());
