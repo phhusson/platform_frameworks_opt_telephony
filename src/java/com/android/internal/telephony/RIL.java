@@ -996,7 +996,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
             try {
-                radioProxy.getSignalStrength(rr.mSerial);
+                if(mSamsungRadioProxy != null)
+                    mSamsungRadioProxy.secGetSignalStrength(rr.mSerial);
+                else
+                    radioProxy.getSignalStrength(rr.mSerial);
             } catch (RemoteException | RuntimeException e) {
                 handleRadioProxyExceptionForRR(rr, "getSignalStrength", e);
             }

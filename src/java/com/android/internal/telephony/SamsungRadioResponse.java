@@ -625,7 +625,9 @@ public class SamsungRadioResponse extends IRadioResponse.Stub {
     public void secAcceptCallResponse(RadioResponseInfo info) {}
     public void secDialResponse(RadioResponseInfo info) {}
     public void secGetCurrentCallsResponse(RadioResponseInfo info, ArrayList<SecCall> calls) {}
-    public void secGetSignalStrengthResponse(RadioResponseInfo info, SecSignalStrength sigStrength) {}
+    public void secGetSignalStrengthResponse(RadioResponseInfo info, SecSignalStrength sigStrength) {
+        mResponse.getSignalStrengthResponse_1_2(info, sigStrength.base);
+    }
     public void secGetVoiceRegistrationStateResponse(RadioResponseInfo info, SecVoiceRegStateResult voiceRegResponse) {}
     public void secGetDataRegistrationStateResponse(RadioResponseInfo info, SecDataRegStateResult dataRegResponse) {}
     public void secExplicitCallTransferResponse(RadioResponseInfo info) {}
