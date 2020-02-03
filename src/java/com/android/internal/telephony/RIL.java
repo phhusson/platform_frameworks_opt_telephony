@@ -988,7 +988,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             if (result != null) {
                 AsyncResult.forMessage(result, null,
                         CommandException.fromRilErrno(REQUEST_NOT_SUPPORTED));
-                result.sendToTarget();
+                try {
+                    result.sendToTarget();
+                } catch(IllegalStateException e) {
+                    android.util.Log.d("PHH", "getModemStatus", e);
+                }
             }
             return;
         }
