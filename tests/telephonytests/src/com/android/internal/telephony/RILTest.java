@@ -116,6 +116,7 @@ import android.net.InetAddresses;
 import android.net.LinkAddress;
 import android.os.Handler;
 import android.os.IPowerManager;
+import android.os.IThermalService;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
@@ -266,11 +267,11 @@ public class RILTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(RILTest.class.getSimpleName());
-        Context context = new ContextFixture().getTestDouble();
         try {
-            TelephonyDevController.create(context);
+            TelephonyDevController.create();
         } catch (RuntimeException e) {
         }
+        Context context = new ContextFixture().getTestDouble();
         doReturn(true).when(mConnectionManager)
             .isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
         doReturn(mConnectionManager).when(context)
@@ -279,7 +280,7 @@ public class RILTest extends TelephonyTest {
                 .getSystemService(Context.TELEPHONY_SERVICE);
         doReturn(true).when(mTelephonyManager).isDataCapable();
         PowerManager powerManager = new PowerManager(context, mock(IPowerManager.class),
-                new Handler(Looper.myLooper()));
+                mock(IThermalService.class), new Handler(Looper.myLooper()));
         doReturn(powerManager).when(context).getSystemService(Context.POWER_SERVICE);
         doReturn(new ApplicationInfo()).when(context).getApplicationInfo();
 
