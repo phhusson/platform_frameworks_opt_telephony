@@ -832,13 +832,11 @@ public class GsmCdmaPhone extends Phone {
     public void registerForSuppServiceNotification(
             Handler h, int what, Object obj) {
         mSsnRegistrants.addUnique(h, what, obj);
-        if (mSsnRegistrants.size() == 1) mCi.setSuppServiceNotifications(true, null);
     }
 
     @Override
     public void unregisterForSuppServiceNotification(Handler h) {
         mSsnRegistrants.remove(h);
-        if (mSsnRegistrants.size() == 0) mCi.setSuppServiceNotifications(false, null);
     }
 
     @Override
@@ -3705,7 +3703,7 @@ public class GsmCdmaPhone extends Phone {
                 cdmaApplication.getType() == AppType.APPTYPE_RUIM);
     }
 
-    private void phoneObjectUpdater(int newVoiceRadioTech) {
+    protected void phoneObjectUpdater(int newVoiceRadioTech) {
         logd("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech);
 
         // Check for a voice over LTE/NR replacement

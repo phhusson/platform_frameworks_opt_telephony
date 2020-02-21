@@ -221,6 +221,7 @@ public class ServiceStateTracker extends Handler {
     private RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
     private RegistrantList mImsCapabilityChangedRegistrants = new RegistrantList();
     private RegistrantList mNrStateChangedRegistrants = new RegistrantList();
+    private RegistrantList mNrFrequencyChangedRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
@@ -445,7 +446,7 @@ public class ServiceStateTracker extends Handler {
 
     //Common
     @UnsupportedAppUsage
-    private final GsmCdmaPhone mPhone;
+    protected final GsmCdmaPhone mPhone;
 
     private CellIdentity mCellIdentity;
     private CellIdentity mNewCellIdentity;
@@ -1581,8 +1582,11 @@ public class ServiceStateTracker extends Handler {
                     }
                     mPhone.notifyPhysicalChannelConfiguration(list);
                     mLastPhysicalChannelConfigList = list;
-                    boolean hasChanged =
-                            updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS);
+                    boolean hasChanged = false;
+                    if (updateNrFrequencyRangeFromPhysicalChannelConfigs(list, mSS)) {
+                        mNrFrequencyChangedRegistrants.notifyRegistrants();
+                        hasChanged = true;
+                    }
                     if (updateNrStateFromPhysicalChannelConfigs(list, mSS)) {
                         mNrStateChangedRegistrants.notifyRegistrants();
                         hasChanged = true;
@@ -2075,7 +2079,7 @@ public class ServiceStateTracker extends Handler {
         }
     }
 
-    void handlePollStateResultMessage(int what, AsyncResult ar) {
+    protected void handlePollStateResultMessage(int what, AsyncResult ar) {
         int ints[];
         switch (what) {
             case EVENT_POLL_STATE_CS_CELLULAR_REGISTRATION: {
@@ -5487,7 +5491,8 @@ public class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed
+     * Consider dataRegState if voiceRegState is OOS to determine SPN to be displayed.
+     * If dataRegState is in service on IWLAN, also check for wifi calling enabled.
      * @param ss service state.
      */
     protected int getCombinedRegState(ServiceState ss) {
@@ -5496,8 +5501,16 @@ public class ServiceStateTracker extends Handler {
         if ((regState == ServiceState.STATE_OUT_OF_SERVICE
                 || regState == ServiceState.STATE_POWER_OFF)
                 && (dataRegState == ServiceState.STATE_IN_SERVICE)) {
-            log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
-            regState = dataRegState;
+            if (ss.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                if (mPhone.getImsPhone() != null && mPhone.getImsPhone().isWifiCallingEnabled()) {
+                    log("getCombinedRegState: return STATE_IN_SERVICE for IWLAN as "
+                            + "Data is in service and WFC is enabled");
+                    regState = dataRegState;
+                }
+            } else {
+                log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
+                regState = dataRegState;
+            }
         }
         return regState;
     }
@@ -5638,6 +5651,25 @@ public class ServiceStateTracker extends Handler {
      */
     public void unregisterForNrStateChanged(Handler h) {
         mNrStateChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Registers for 5G NR frequency changed.
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForNrFrequencyChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mNrFrequencyChangedRegistrants.add(r);
+    }
+
+    /**
+     * Unregisters for 5G NR frequency changed.
+     * @param h handler to notify
+     */
+    public void unregisterForNrFrequencyChanged(Handler h) {
+        mNrFrequencyChangedRegistrants.remove(h);
     }
 
     /**
