@@ -35,7 +35,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -58,7 +57,6 @@ import android.telephony.TelephonyManager;
 import android.telephony.ims.ImsCallProfile;
 import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.RegistrationManager;
-import android.telephony.ims.aidl.IImsRegistrationCallback;
 import android.telephony.ims.stub.ImsRegistrationImplBase;
 import android.telephony.ims.stub.ImsUtImplBase;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -67,10 +65,8 @@ import android.testing.TestableLooper;
 
 import androidx.test.filters.FlakyTest;
 
-import com.android.ims.FeatureConnector;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsUtInterface;
-import com.android.ims.RcsFeatureManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
@@ -137,7 +133,6 @@ public class ImsPhoneTest extends TelephonyTest {
         doReturn(Call.State.IDLE).when(mRingingCall).getState();
         doReturn(mExecutor).when(mContext).getMainExecutor();
 
-        mContextFixture.putBooleanResource(com.android.internal.R.bool.config_voice_capable, true);
         doReturn(true).when(mTelephonyManager).isVoiceCapable();
 
         mImsPhoneUT = new ImsPhone(mContext, mNotifier, mPhone, true);
@@ -264,7 +259,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
-    public void testHandleInCallMmiCommandCallEct() {
+    public void testHandleInCallMmiCommandCallEct() throws Exception {
         doReturn(Call.State.ACTIVE).when(mForegroundCall).getState();
 
         // dial string length > 1
@@ -272,11 +267,7 @@ public class ImsPhoneTest extends TelephonyTest {
 
         // dial string length == 1
         assertEquals(true, mImsPhoneUT.handleInCallMmiCommands("4"));
-        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
-        verify(mTestHandler).sendMessageAtTime(messageArgumentCaptor.capture(), anyLong());
-        assertEquals(EVENT_SUPP_SERVICE_FAILED, messageArgumentCaptor.getValue().what);
-        assertEquals(Phone.SuppService.TRANSFER,
-                ((AsyncResult) messageArgumentCaptor.getValue().obj).result);
+        verify(mImsCT).explicitCallTransfer();
     }
 
     @Test
@@ -644,14 +635,12 @@ public class ImsPhoneTest extends TelephonyTest {
         String messageAlert = "Alert!";
         String messageNotification = "Notification!";
         mContextFixture.putStringArrayResource(
-                com.android.telephony.resources.R.array.wfcOperatorErrorAlertMessages,
+                com.android.internal.R.array.wfcOperatorErrorAlertMessages,
                 new String[]{messageAlert});
         mContextFixture.putStringArrayResource(
-                com.android.telephony.resources.R.array.wfcOperatorErrorNotificationMessages,
+                com.android.internal.R.array.wfcOperatorErrorNotificationMessages,
                 new String[]{messageNotification});
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.wfcRegErrorTitle,
-                title);
+        mContextFixture.putResource(com.android.internal.R.string.wfcRegErrorTitle, title);
 
         mImsPhoneUT.processDisconnectReason(
                 new ImsReasonInfo(ImsReasonInfo.CODE_REGISTRATION_ERROR, 0, "REG09"));
@@ -669,27 +658,6 @@ public class ImsPhoneTest extends TelephonyTest {
                 android.telephony.ims.ImsManager.EXTRA_WFC_REGISTRATION_FAILURE_MESSAGE));
         assertEquals(messageNotification,
                 intent.getValue().getStringExtra(Phone.EXTRA_KEY_NOTIFICATION_MESSAGE));
-    }
-
-    @Test
-    @SmallTest
-    public void testRegisteringImsRcsRegistrationCallback() throws Exception {
-        RcsFeatureManager rcsFeatureManager = mock(RcsFeatureManager.class);
-
-        // When initialized RcsFeatureManager and
-        mImsPhoneUT.initRcsFeatureManager();
-        assertNotNull(mImsPhoneUT.mRcsManagerConnector);
-
-        // When connection is ready, the register IMS registration callback should be called.
-        mImsPhoneUT.mRcsFeatureConnectorListener.connectionReady(rcsFeatureManager);
-        verify(rcsFeatureManager).registerImsRegistrationCallback(
-                any(IImsRegistrationCallback.class));
-
-        // When connection is unavailable, the IMS registration state should be not registered.
-        mImsPhoneUT.mRcsFeatureConnectorListener.connectionUnavailable();
-        Consumer<Integer> registrationState = mock(Consumer.class);
-        mImsPhoneUT.getImsRcsRegistrationState(registrationState);
-        verify(registrationState).accept(RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED);
     }
 
     @Test
@@ -875,19 +843,6 @@ public class ImsPhoneTest extends TelephonyTest {
     public void testNonNullTrackersInImsPhone() throws Exception {
         assertNotNull(mImsPhoneUT.getEmergencyNumberTracker());
         assertNotNull(mImsPhoneUT.getServiceStateTracker());
-    }
-
-    @Test
-    @SmallTest
-    public void testRcsFeatureManagerInitialization() throws Exception {
-        FeatureConnector<RcsFeatureManager> mockRcsManagerConnector =
-                (FeatureConnector<RcsFeatureManager>) mock(FeatureConnector.class);
-        mImsPhoneUT.mRcsManagerConnector = mockRcsManagerConnector;
-
-        mImsPhoneUT.initRcsFeatureManager();
-
-        verify(mockRcsManagerConnector).disconnect();
-        assertNotNull(mImsPhoneUT.mRcsManagerConnector);
     }
 
     private ServiceState getServiceStateDataAndVoice(int rat, int regState, boolean isRoaming) {

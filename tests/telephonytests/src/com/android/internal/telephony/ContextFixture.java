@@ -351,11 +351,6 @@ public class ContextFixture implements TestFixture<Context> {
             return registerReceiverFakeImpl(receiver, filter);
         }
 
-        @Override
-        public Context createPackageContext(String packageName, int flags) {
-            return this;
-        }
-
         private Intent registerReceiverFakeImpl(BroadcastReceiver receiver, IntentFilter filter) {
             Intent result = null;
             synchronized (mBroadcastReceiversByAction) {
@@ -486,9 +481,9 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
-        public void sendOrderedBroadcast(Intent intent, String receiverPermission,
-                String receiverAppOp, Bundle options, BroadcastReceiver resultReceiver,
-                Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
+        public void sendOrderedBroadcast(Intent intent, int initialCode, String receiverPermission,
+                String receiverAppOp, BroadcastReceiver resultReceiver, Handler scheduler,
+                String initialData, Bundle initialExtras, Bundle options) {
             logd("sendOrderedBroadcast called for " + intent.getAction());
             mLastBroadcastOptions = options;
             sendBroadcast(intent);

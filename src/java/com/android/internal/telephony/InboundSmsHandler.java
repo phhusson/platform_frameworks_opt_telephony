@@ -61,11 +61,11 @@ import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Pair;
 
+import com.android.internal.R;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.SmsConstants.MessageClass;
 import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.util.NotificationChannelController;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.telephony.util.TelephonyUtils;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
@@ -270,10 +270,9 @@ public abstract class InboundSmsHandler extends StateMachine {
         mResolver = context.getContentResolver();
         mWapPush = new WapPushOverSms(context);
 
-        TelephonyManager tm =
-                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
-        boolean smsCapable = tm.isSmsCapable();
-        mSmsReceiveDisabled = !tm.getSmsReceiveCapableForPhone(
+        boolean smsCapable = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_sms_capable);
+        mSmsReceiveDisabled = !TelephonyManager.from(mContext).getSmsReceiveCapableForPhone(
                 mPhone.getPhoneId(), smsCapable);
 
         PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
@@ -1074,12 +1073,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                 .setAutoCancel(true)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setDefaults(Notification.DEFAULT_ALL)
-                .setContentTitle(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                        .getString(com.android.telephony.resources.R.string
-                                .new_sms_notification_title))
-                .setContentText(TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                        .getString(com.android.telephony.resources.R.string
-                                .new_sms_notification_content))
+                .setContentTitle(mContext.getString(R.string.new_sms_notification_title))
+                .setContentText(mContext.getString(R.string.new_sms_notification_content))
                 .setContentIntent(intent)
                 .setChannelId(NotificationChannelController.CHANNEL_ID_SMS);
         NotificationManager mNotificationManager =
@@ -1129,6 +1124,14 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (VisualVoicemailSmsFilter.filter(
                 mContext, pdus, tracker.getFormat(), destPort, tracker.getSubId())) {
             log("Visual voicemail SMS dropped");
+            dropSms(resultReceiver);
+            return true;
+        }
+
+        MissedIncomingCallSmsFilter missedIncomingCallSmsFilter =
+                new MissedIncomingCallSmsFilter(mPhone);
+        if (missedIncomingCallSmsFilter.filter(pdus, tracker.getFormat())) {
+            log("Missed incoming call SMS received.");
             dropSms(resultReceiver);
             return true;
         }
@@ -1193,20 +1196,19 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // Only pass in the resultReceiver when the user SYSTEM is processed.
                 try {
                     mContext.createPackageContextAsUser(mContext.getPackageName(), 0, targetUser)
-                            .sendOrderedBroadcast(intent, permission, appOp, opts,
+                            .sendOrderedBroadcast(intent, Activity.RESULT_OK, permission, appOp,
                                     users[i] == UserHandle.SYSTEM.getIdentifier()
-                                            ? resultReceiver : null,
-                                    getHandler(), Activity.RESULT_OK, null /* initialData */,
-                                    null /* initialExtras */);
+                                            ? resultReceiver : null, getHandler(),
+                                    null /* initialData */, null /* initialExtras */, opts);
                 } catch (PackageManager.NameNotFoundException ignored) {
                 }
             }
         } else {
             try {
                 mContext.createPackageContextAsUser(mContext.getPackageName(), 0, user)
-                        .sendOrderedBroadcast(intent, permission, appOp, opts, resultReceiver,
-                                getHandler(), Activity.RESULT_OK, null /* initialData */,
-                                null /* initialExtras */);
+                        .sendOrderedBroadcast(intent, Activity.RESULT_OK, permission, appOp,
+                                resultReceiver, getHandler(), null /* initialData */,
+                                null /* initialExtras */, opts);
             } catch (PackageManager.NameNotFoundException ignored) {
             }
         }

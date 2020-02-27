@@ -27,7 +27,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -50,7 +49,6 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RadioConfig;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.uicc.euicc.EuiccCard;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.telephony.Rlog;
 
 import java.io.FileDescriptor;
@@ -209,17 +207,14 @@ public class UiccController extends Handler {
         if (DBG) log("Creating UiccController");
         mContext = c;
         mCis = PhoneFactory.getCommandsInterfaces();
-
-        Resources resources = TelephonyResourceUtils.getTelephonyResources(mContext);
         if (DBG) {
-            String logStr = "config_num_physical_slots = " + resources.getInteger(
-                    com.android.telephony.resources.R.integer.config_num_physical_slots);
+            String logStr = "config_num_physical_slots = " + c.getResources().getInteger(
+                    com.android.internal.R.integer.config_num_physical_slots);
             log(logStr);
             sLocalLog.log(logStr);
         }
-
-        int numPhysicalSlots = resources.getInteger(
-                com.android.telephony.resources.R.integer.config_num_physical_slots);
+        int numPhysicalSlots = c.getResources().getInteger(
+                com.android.internal.R.integer.config_num_physical_slots);
         // Minimum number of physical slot count should be equals to or greater than phone count,
         // if it is less than phone count use phone count as physical slot count.
         if (numPhysicalSlots < mCis.length) {
@@ -254,8 +249,8 @@ public class UiccController extends Handler {
         mCardStrings = loadCardStrings();
         mDefaultEuiccCardId = UNINITIALIZED_CARD_ID;
 
-        mEuiccSlots = resources.getIntArray(
-                    com.android.telephony.resources.R.array.non_removable_euicc_slots);
+        mEuiccSlots = mContext.getResources()
+                .getIntArray(com.android.internal.R.array.non_removable_euicc_slots);
         mHasBuiltInEuicc = hasBuiltInEuicc();
 
         PhoneConfigurationManager.registerForMultiSimConfigChange(
@@ -701,15 +696,30 @@ public class UiccController extends Handler {
             cardString = card.getIccId();
         }
 
-        // EID may be unpopulated if RadioConfig<1.2
-        // If so, just register for EID loaded and skip this stuff
-        if (isEuicc && cardString == null
-                && mDefaultEuiccCardId != UNSUPPORTED_CARD_ID) {
-            ((EuiccCard) card).registerForEidReady(this, EVENT_EID_READY, index);
-        }
-
         if (cardString != null) {
             addCardId(cardString);
+        }
+
+        // EID is unpopulated if Radio HAL < 1.4 (RadioConfig < 1.2)
+        // If so, just register for EID loaded and skip this stuff
+        if (isEuicc && mDefaultEuiccCardId != UNSUPPORTED_CARD_ID) {
+            if (cardString == null) {
+                ((EuiccCard) card).registerForEidReady(this, EVENT_EID_READY, index);
+            } else {
+                // If we know the EID from IccCardStatus, just use it to set mDefaultEuiccCardId if
+                // it's not already set.
+                // This is needed in cases where slot status doesn't include EID, and we don't want
+                // to register for EID from APDU because we already know cardString from a previous
+                // APDU
+                if (mDefaultEuiccCardId == UNINITIALIZED_CARD_ID
+                        || mDefaultEuiccCardId == TEMPORARILY_UNSUPPORTED_CARD_ID) {
+                    mDefaultEuiccCardId = convertToPublicCardId(cardString);
+                    String logStr = "IccCardStatus eid=" + cardString + " slot=" + slotId
+                            + " mDefaultEuiccCardId=" + mDefaultEuiccCardId;
+                    sLocalLog.log(logStr);
+                    log(logStr);
+                }
+            }
         }
 
         if (DBG) log("Notifying IccChangedRegistrants");
@@ -1072,10 +1082,8 @@ public class UiccController extends Handler {
                     mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
             configManager.updateConfigForPhoneId(index, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
 
-            boolean requirePowerOffOnSimRefreshReset = TelephonyResourceUtils
-                    .getTelephonyResources(mContext).getBoolean(
-                    com.android.telephony.resources.R.bool
-                        .config_requireRadioPowerOffOnSimRefreshReset);
+            boolean requirePowerOffOnSimRefreshReset = mContext.getResources().getBoolean(
+                    com.android.internal.R.bool.config_requireRadioPowerOffOnSimRefreshReset);
             if (requirePowerOffOnSimRefreshReset) {
                 mCis[index].setRadioPower(false, null);
             }

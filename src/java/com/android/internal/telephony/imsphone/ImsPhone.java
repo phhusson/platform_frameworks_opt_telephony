@@ -49,8 +49,6 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.NetworkStats;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -78,18 +76,15 @@ import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsSsData;
 import android.telephony.ims.ImsSsInfo;
 import android.telephony.ims.RegistrationManager;
-import android.telephony.ims.feature.ImsFeature;
 import android.telephony.ims.stub.ImsUtImplBase;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
-import com.android.ims.FeatureConnector;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
 import com.android.ims.ImsManager;
 import com.android.ims.ImsUtInterface;
-import com.android.ims.RcsFeatureManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
@@ -114,7 +109,6 @@ import com.android.internal.telephony.metrics.TelephonyMetrics;
 import com.android.internal.telephony.nano.TelephonyProto.ImsConnectionState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.util.NotificationChannelController;
-import com.android.internal.telephony.util.TelephonyResourceUtils;
 import com.android.internal.util.IndentingPrintWriter;
 import com.android.telephony.Rlog;
 
@@ -212,13 +206,6 @@ public class ImsPhone extends ImsPhoneBase {
     @UnsupportedAppUsage
     private ServiceState mSS = new ServiceState();
 
-    private RcsFeatureManager mRcsManager;
-    @VisibleForTesting
-    public FeatureConnector<RcsFeatureManager> mRcsManagerConnector;
-    @VisibleForTesting
-    public FeatureConnector.Listener<RcsFeatureManager> mRcsFeatureConnectorListener;
-    public ImsRcsStatusListener mRcsStatusListener;
-
     // To redial silently through GSM or CDMA when dialing through IMS fails
     private String mLastDialString;
 
@@ -233,9 +220,8 @@ public class ImsPhone extends ImsPhoneBase {
     private final LocalLog mRegLocalLog = new LocalLog(100);
     private TelephonyMetrics mMetrics;
 
-    // The helper class to receive and store the MmTel and RCS registration status updated.
+    // The helper class to receive and store the MmTel registration status updated.
     private ImsRegistrationCallbackHelper mImsMmTelRegistrationHelper;
-    private ImsRegistrationCallbackHelper mImsRcsRegistrationHelper;
 
     private boolean mRoaming = false;
 
@@ -325,7 +311,8 @@ public class ImsPhone extends ImsPhoneBase {
 
         mMetrics = TelephonyMetrics.getInstance();
 
-        initImsRegistration();
+        mImsMmTelRegistrationHelper = new ImsRegistrationCallbackHelper(mMmTelRegistrationUpdate,
+                context.getMainExecutor());
 
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
@@ -347,10 +334,6 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.registerForServiceStateChanged(this, EVENT_SERVICE_STATE_CHANGED, null);
         // Force initial roaming state update later, on EVENT_CARRIER_CONFIG_CHANGED.
         // Settings provider or CarrierConfig may not be loaded now.
-
-        // Listen to the carrier config changed to initialize RcsFeatureManager
-        IntentFilter filter = new IntentFilter(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mContext.registerReceiver(mCarrierConfigChangedReceiver, filter);
     }
 
     //todo: get rid of this function. It is not needed since parentPhone obj never changes
@@ -373,106 +356,6 @@ public class ImsPhone extends ImsPhoneBase {
             }
             mDefaultPhone.unregisterForServiceStateChanged(this);
         }
-
-        mContext.unregisterReceiver(mCarrierConfigChangedReceiver);
-
-        if (mRcsManagerConnector != null) {
-            mRcsManagerConnector.disconnect();
-            mRcsManagerConnector = null;
-        }
-
-        if (mRcsManager != null) {
-            mRcsManager.release();
-            mRcsManager = null;
-        }
-    }
-
-    private BroadcastReceiver mCarrierConfigChangedReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent == null) {
-                return;
-            }
-            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED.equals(intent.getAction())) {
-                Bundle bundle = intent.getExtras();
-                if (bundle == null) {
-                    return;
-                }
-                int phoneId = bundle.getInt(CarrierConfigManager.EXTRA_SLOT_INDEX);
-                if (phoneId == mPhoneId) {
-                    sendEmptyMessage(EVENT_CARRIER_CONFIG_CHANGED);
-                }
-            }
-        }
-    };
-
-    /**
-     * Create RcsManagerConnector to initialize RcsFeatureManager
-     */
-    @VisibleForTesting
-    public void initRcsFeatureManager() {
-        if (mRcsManagerConnector != null) {
-            mRcsManagerConnector.disconnect();
-            mRcsManagerConnector = null;
-        }
-
-        logd("initRcsFeatureManager");
-        mRcsFeatureConnectorListener = new FeatureConnector.Listener<>() {
-            @Override
-            public boolean isSupported() {
-                // Check if Telephony IMS is supported or not
-                if (!ImsManager.isImsSupportedOnDevice(mContext)) {
-                    return false;
-                }
-                return true;
-            }
-
-            @Override
-            public RcsFeatureManager getFeatureManager() {
-                logd("Create RcsFeatureManager instance");
-                return new RcsFeatureManager(mContext, mPhoneId);
-            }
-
-            @Override
-            public void connectionReady(RcsFeatureManager manager) throws ImsException {
-                logi("RcsFeatureManager is ready");
-                mRcsManager = manager;
-
-                // Listen to the IMS RCS registration status changed
-                mRcsManager.registerImsRegistrationCallback(
-                        mImsRcsRegistrationHelper.getCallbackBinder());
-
-                if (mRcsStatusListener != null) {
-                    mRcsStatusListener.onRcsConnected(getPhoneId(), mRcsManager);
-                }
-            }
-
-            @Override
-            public void connectionUnavailable() {
-                logi("RcsFeatureManager is unavailable");
-                resetImsRegistrationState(ImsFeature.FEATURE_RCS);
-                if (mRcsManager != null) {
-                    mRcsManager.release();
-                }
-                mRcsManager = null;
-
-                if (mRcsStatusListener != null) {
-                    mRcsStatusListener.onRcsDisconnected(getPhoneId());
-                }
-            }
-        };
-
-        mRcsManagerConnector = new FeatureConnector<>(mContext, mPhoneId,
-                mRcsFeatureConnectorListener, mContext.getMainExecutor(), LOG_TAG);
-        mRcsManagerConnector.connect();
-    }
-
-    public RcsFeatureManager getRcsManager() {
-        return mRcsManager;
-    }
-
-    public void setRcsStatusListener(ImsRcsStatusListener listener) {
-        mRcsStatusListener = listener;
     }
 
     @UnsupportedAppUsage
@@ -562,7 +445,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void explicitCallTransfer() {
+    public void explicitCallTransfer() throws CallStateException {
         mCT.explicitCallTransfer();
     }
 
@@ -754,15 +637,17 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     private boolean handleEctIncallSupplementaryService(String dialString) {
-
-        int len = dialString.length();
-
-        if (len != 1) {
+        if (dialString.length() != 1) {
             return false;
         }
 
-        if (DBG) logd("MmiCode 4: not support explicit call transfer");
-        notifySuppServiceFailed(Phone.SuppService.TRANSFER);
+        if (DBG) logd("MmiCode 4: explicit call transfer");
+        try {
+            explicitCallTransfer();
+        } catch (CallStateException e) {
+            if (DBG) Rlog.d(LOG_TAG, "explicit call transfer failed", e);
+            notifySuppServiceFailed(Phone.SuppService.TRANSFER);
+        }
         return true;
     }
 
@@ -1126,6 +1011,13 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason,
             Message onComplete) {
+        getCallForwardingOption(commandInterfaceCFReason,
+                SERVICE_CLASS_VOICE, onComplete);
+    }
+
+    @Override
+    public void getCallForwardingOption(int commandInterfaceCFReason, int serviceClass,
+            Message onComplete) {
         if (DBG) logd("getCallForwardingOption reason=" + commandInterfaceCFReason);
         if (isValidCommandInterfaceCFReason(commandInterfaceCFReason)) {
             if (DBG) logd("requesting call forwarding query.");
@@ -1154,6 +1046,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @UnsupportedAppUsage
+    @Override
     public void setCallForwardingOption(int commandInterfaceCFAction,
             int commandInterfaceCFReason,
             String dialingNumber,
@@ -1255,7 +1148,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public void getCallBarring(String facility, Message onComplete) {
-        getCallBarring(facility, onComplete, CommandsInterface.SERVICE_CLASS_NONE);
+        getCallBarring(facility, onComplete, CommandsInterface.SERVICE_CLASS_VOICE);
     }
 
     public void getCallBarring(String facility, Message onComplete, int serviceClass) {
@@ -1281,7 +1174,7 @@ public class ImsPhone extends ImsPhoneBase {
     public void setCallBarring(String facility, boolean lockState, String password,
             Message onComplete) {
         setCallBarring(facility, lockState, password, onComplete,
-                CommandsInterface.SERVICE_CLASS_NONE);
+                CommandsInterface.SERVICE_CLASS_VOICE);
     }
 
     @Override
@@ -1321,6 +1214,8 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public void sendUSSD(String ussdString, Message response) {
+        Rlog.d(LOG_TAG, "sendUssd ussdString = " + ussdString);
+        mLastDialString = ussdString;
         mCT.sendUSSD(ussdString, response);
     }
 
@@ -1702,14 +1597,6 @@ public class ImsPhone extends ImsPhoneBase {
                     updateRoamingState(sst.mSS);
                 }
                 break;
-            case EVENT_CARRIER_CONFIG_CHANGED:
-                if (DBG) logd("EVENT_CARRIER_CONFIG_CHANGED");
-                if (mRcsManager == null) {
-                    initRcsFeatureManager();
-                } else {
-                    mRcsManager.updateCapabilities();
-                }
-                break;
 
             default:
                 super.handleMessage(msg);
@@ -1885,23 +1772,9 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.getImsRegistrationTech(callback);
     }
 
-    /**
-     * Get the IMS RCS registration technology for this Phone.
-     */
-    public void getImsRcsRegistrationTech(Consumer<Integer> callback) {
-        mRcsManager.getImsRegistrationTech(callback);
-    }
-
     @Override
     public void getImsRegistrationState(Consumer<Integer> callback) {
         callback.accept(mImsMmTelRegistrationHelper.getImsRegistrationState());
-    }
-
-    /**
-     * Retrieve the current RCS registration state.
-     */
-    public void getImsRcsRegistrationState(Consumer<Integer> callback) {
-        callback.accept(mImsRcsRegistrationHelper.getImsRegistrationState());
     }
 
     @Override
@@ -2019,12 +1892,11 @@ public class ImsPhone extends ImsPhoneBase {
         }
 
         final String[] wfcOperatorErrorAlertMessages =
-                TelephonyResourceUtils.getTelephonyResources(mContext).getStringArray(
-                        com.android.telephony.resources.R.array.wfcOperatorErrorAlertMessages);
+                mContext.getResources().getStringArray(
+                        com.android.internal.R.array.wfcOperatorErrorAlertMessages);
         final String[] wfcOperatorErrorNotificationMessages =
-                TelephonyResourceUtils.getTelephonyResources(mContext).getStringArray(
-                        com.android.telephony.resources.R.array
-                            .wfcOperatorErrorNotificationMessages);
+                mContext.getResources().getStringArray(
+                        com.android.internal.R.array.wfcOperatorErrorNotificationMessages);
 
         for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
             String[] codes = wfcOperatorErrorCodes[i].split("\\|");
@@ -2053,8 +1925,8 @@ public class ImsPhone extends ImsPhoneBase {
                 }
             }
 
-            final CharSequence title = TelephonyResourceUtils.getTelephonyResourceContext(mContext)
-                    .getText(com.android.telephony.resources.R.string.wfcRegErrorTitle);
+            final CharSequence title = mContext.getText(
+                    com.android.internal.R.string.wfcRegErrorTitle);
 
             int idx = Integer.parseInt(codes[1]);
             if (idx < 0
@@ -2111,11 +1983,6 @@ public class ImsPhone extends ImsPhoneBase {
     @VisibleForTesting
     public PowerManager.WakeLock getWakeLock() {
         return mWakeLock;
-    }
-
-    @Override
-    public NetworkStats getVtDataUsage(boolean perUidStats) {
-        return mCT.getVtDataUsage(perUidStats);
     }
 
     /**
@@ -2193,18 +2060,9 @@ public class ImsPhone extends ImsPhoneBase {
     /**
      * Reset the IMS registration state.
      */
-    public void resetImsRegistrationState(int featureType) {
-        if (DBG) logd("resetImsRegistrationState: feature=" + featureType);
-        if (featureType == ImsFeature.FEATURE_MMTEL) {
-            mImsMmTelRegistrationHelper.reset();
-        } else if (featureType == ImsFeature.FEATURE_RCS) {
-            mImsRcsRegistrationHelper.reset();
-        }
-    }
-
-    private void initImsRegistration() {
-        mImsMmTelRegistrationHelper = new ImsRegistrationCallbackHelper(mMmTelRegistrationUpdate);
-        mImsRcsRegistrationHelper = new ImsRegistrationCallbackHelper(mRcsRegistrationUpdate);
+    public void resetImsRegistrationState() {
+        if (DBG) logd("resetImsRegistrationState");
+        mImsMmTelRegistrationHelper.reset();
     }
 
     private ImsRegistrationCallbackHelper.ImsRegistrationUpdate mMmTelRegistrationUpdate = new
@@ -2251,29 +2109,6 @@ public class ImsPhone extends ImsPhoneBase {
         }
     };
 
-    private ImsRegistrationCallbackHelper.ImsRegistrationUpdate mRcsRegistrationUpdate = new
-            ImsRegistrationCallbackHelper.ImsRegistrationUpdate() {
-        @Override
-        public void handleImsRegistered(int imsRadioTech) {
-            if (DBG) logd("handle RCS registered");
-        }
-
-        @Override
-        public void handleImsRegistering(int imsRadioTech) {
-            if (DBG) logd("handle RCS registering");
-        }
-
-        @Override
-        public void handleImsUnregistered(ImsReasonInfo imsReasonInfo) {
-            if (DBG) logd("handle RCS unregistered");
-        }
-
-        @Override
-        public void handleImsSubscriberAssociatedUriChanged(Uri[] uris) {
-            if (DBG) logd("handle RCS SubscriberAssociatedUriChanged");
-        }
-    };
-
     public IccRecords getIccRecords() {
         return mDefaultPhone.getIccRecords();
     }
@@ -2296,8 +2131,6 @@ public class ImsPhone extends ImsPhoneBase {
         pw.println("  mSilentRedialRegistrants = " + mSilentRedialRegistrants);
         pw.println("  mImsMmTelRegistrationState = "
                 + mImsMmTelRegistrationHelper.getImsRegistrationState());
-        pw.println("  mImsRcsRegistrationState = "
-                + mImsRcsRegistrationHelper.getImsRegistrationState());
         pw.println("  mRoaming = " + mRoaming);
         pw.println("  mSsnRegistrants = " + mSsnRegistrants);
         pw.println(" Registration Log:");

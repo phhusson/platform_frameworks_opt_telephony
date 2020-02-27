@@ -74,9 +74,7 @@ public class TelephonyRegistryTest extends TelephonyTest {
             PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR,
             "PhoneStateListener.LISTEN_MESSAGE_WAITING_INDICATOR",
             PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST,
-            "PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST",
-            PhoneStateListener.LISTEN_REGISTRATION_FAILURE,
-            "PhoneStateListener.LISTEN_REGISTRATION_FAILURE");
+            "PhoneStateListener.LISTEN_EMERGENCY_NUMBER_LIST");
 
     // All events contribute to TelephonyRegistry.PRECISE_PHONE_STATE_PERMISSION_MASK
     private static final Map<Integer, String> READ_PRECISE_PHONE_STATE_EVENTS = Map.of(
@@ -89,7 +87,11 @@ public class TelephonyRegistryTest extends TelephonyTest {
             PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED,
             "PhoneStateListener.LISTEN_CALL_ATTRIBUTES_CHANGED",
             PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES,
-            "PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES");
+            "PhoneStateListener.LISTEN_IMS_CALL_DISCONNECT_CAUSES",
+            PhoneStateListener.LISTEN_REGISTRATION_FAILURE,
+            "PhoneStateListener.LISTEN_REGISTRATION_FAILURE",
+            PhoneStateListener.LISTEN_BARRING_INFO,
+            "PhoneStateListener.LISTEN_BARRING_INFO");
 
     // All events contribute to TelephonyRegistry.PREVILEGED_PHONE_STATE_PERMISSION_MASK
     // TODO: b/148021947 will create the permission group with PREVILIGED_STATE_PERMISSION_MASK
@@ -169,17 +171,16 @@ public class TelephonyRegistryTest extends TelephonyTest {
         doReturn(mMockSubInfo).when(mSubscriptionManager).getActiveSubscriptionInfo(anyInt());
         doReturn(0/*slotIndex*/).when(mMockSubInfo).getSimSlotIndex();
         // mTelephonyRegistry.listen with notifyNow = true should trigger callback immediately.
-        PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, 4, 5, 6,
-                null, null, null, null, null, null, null);
+        PhoneCapability phoneCapability = new PhoneCapability(1, 2, 3, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         mTelephonyRegistry.listenWithFeature(mContext.getOpPackageName(), mContext.getFeatureId(),
-                mPhoneStateListener.callback, LISTEN_PHONE_CAPABILITY_CHANGE, true);
+                mPhoneStateListener.callback,
+                LISTEN_PHONE_CAPABILITY_CHANGE, true);
         processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);
 
         // notifyPhoneCapabilityChanged with a new capability. Callback should be triggered.
-        phoneCapability = new PhoneCapability(6, 5, 4, 3, 2, 1,
-                null, null, null, null, null, null, null);
+        phoneCapability = new PhoneCapability(3, 2, 2, null, false);
         mTelephonyRegistry.notifyPhoneCapabilityChanged(phoneCapability);
         processAllMessages();
         assertEquals(phoneCapability, mPhoneCapability);

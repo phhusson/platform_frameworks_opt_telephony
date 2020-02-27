@@ -93,6 +93,7 @@ import android.util.Pair;
 
 import androidx.test.filters.FlakyTest;
 
+import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
@@ -149,7 +150,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     private static final int PHONE_ID = 0;
 
-    private static final String CARRIER_NAME_DISPLAY_NO_SERVICE = "no service";
+    private static final String CARRIER_NAME_DISPLAY_NO_SERVICE = "No service";
     private static final String CARRIER_NAME_DISPLAY_EMERGENCY_CALL = "emergency call";
     private static final String WIFI_CALLING_VOICE_FORMAT = "%s wifi calling";
     private static final String WIFI_CALLING_DATA_FORMAT = "%s wifi data";
@@ -220,11 +221,9 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         logd("ServiceStateTrackerTest +Setup!");
         super.setUp("ServiceStateTrackerTest");
 
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.config_wwan_network_service_package,
+        mContextFixture.putResource(R.string.config_wwan_network_service_package,
                 "com.android.phone");
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.config_wlan_network_service_package,
+        mContextFixture.putResource(R.string.config_wlan_network_service_package,
                 "com.xyz.iwlan.networkservice");
         doReturn(mIwlanNetworkServiceStub).when(mIwlanNetworkServiceStub).asBinder();
         addNetworkService();
@@ -268,13 +267,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Override SPN related resource
         mContextFixture.putResource(
-                com.android.telephony.resources.R.string.lockscreen_carrier_default,
+                com.android.internal.R.string.lockscreen_carrier_default,
                 CARRIER_NAME_DISPLAY_NO_SERVICE);
         mContextFixture.putResource(
-                com.android.telephony.resources.R.string.emergency_calls_only,
+                com.android.internal.R.string.emergency_calls_only,
                 CARRIER_NAME_DISPLAY_EMERGENCY_CALL);
         mContextFixture.putStringArrayResource(
-                com.android.telephony.resources.R.array.wfcSpnFormats,
+                com.android.internal.R.array.wfcSpnFormats,
                 WIFI_CALLING_FORMATTERS);
 
         mBundle.putBoolean(
@@ -302,7 +301,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Do not force display "No service" when sim is not ready in any locales
         mContextFixture.putStringArrayResource(
-                com.android.telephony.resources.R.array.config_display_no_service_when_sim_unready,
+                com.android.internal.R.array.config_display_no_service_when_sim_unready,
                 new String[0]);
 
         mBundle.putIntArray(CarrierConfigManager.KEY_5G_NR_SSRSRP_THRESHOLDS_INT_ARRAY,
@@ -1530,15 +1529,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                com.android.telephony.resources.R.bool
-                    .config_user_notification_of_restrictied_mobile_access, true);
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.RestrictedOnDataTitle, "test1");
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnDataTitle, "test1");
         sst.setNotification(ServiceStateTracker.PS_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
                 ArgumentCaptor.forClass(Notification.class);
@@ -1564,15 +1561,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                com.android.telephony.resources.R.bool
-                    .config_user_notification_of_restrictied_mobile_access, true);
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.RestrictedOnAllVoiceTitle,
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnAllVoiceTitle,
                 "test2");
         sst.setNotification(ServiceStateTracker.CS_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
@@ -1599,15 +1594,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                com.android.telephony.resources.R.bool
-                    .config_user_notification_of_restrictied_mobile_access, true);
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.RestrictedOnNormalTitle, "test3");
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnNormalTitle, "test3");
         sst.setNotification(ServiceStateTracker.CS_NORMAL_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
                 ArgumentCaptor.forClass(Notification.class);
@@ -1633,15 +1626,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                com.android.telephony.resources.R.bool
-                    .config_user_notification_of_restrictied_mobile_access, true);
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.RestrictedOnEmergencyTitle,
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnEmergencyTitle,
                 "test4");
         sst.setNotification(ServiceStateTracker.CS_EMERGENCY_ENABLED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
@@ -1669,15 +1660,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         final NotificationManager nm = (NotificationManager)
                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         mContextFixture.putBooleanResource(
-                com.android.telephony.resources.R.bool
-                    .config_user_notification_of_restrictied_mobile_access, true);
+                R.bool.config_user_notification_of_restrictied_mobile_access, true);
         doReturn(new ApplicationInfo()).when(mContext).getApplicationInfo();
         Drawable mockDrawable = mock(Drawable.class);
         Resources mockResources = mContext.getResources();
         when(mockResources.getDrawable(anyInt(), any())).thenReturn(mockDrawable);
 
-        mContextFixture.putResource(
-                com.android.telephony.resources.R.string.RestrictedOnDataTitle, "test1");
+        mContextFixture.putResource(com.android.internal.R.string.RestrictedOnDataTitle, "test1");
 
         sst.setNotification(ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED);
         ArgumentCaptor<Notification> notificationArgumentCaptor =
@@ -2067,8 +2056,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthUpdatedOnDataRegState() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
         CellIdentityLte cellIdentity5 =
-                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst",
-                        Collections.emptyList(), null);
+                new CellIdentityLte(1, 1, 5, 1, Arrays.asList(1, 2), 5000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
 
         sendPhyChanConfigChange(new int[] {10000});
         sendRegStateUpdateForLteCellId(cellIdentity5);
@@ -2079,8 +2068,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthNotUpdatedWhenInvalidInCellIdentity() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
         CellIdentityLte cellIdentityInv =
-                new CellIdentityLte(1, 1, 5, 1, 12345, "001", "01", "test", "tst",
-                        Collections.emptyList(), null);
+                new CellIdentityLte(1, 1, 5, 1, Arrays.asList(1, 2), 12345, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
 
         sendPhyChanConfigChange(new int[] {10000});
         sendRegStateUpdateForLteCellId(cellIdentityInv);
@@ -2091,8 +2080,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthPrefersCarrierAggregationReport() throws Exception {
         // Cell ID change should trigger hasLocationChanged.
         CellIdentityLte cellIdentity10 =
-                new CellIdentityLte(1, 1, 5, 1, 10000, "001", "01", "test", "tst",
-                        Collections.emptyList(), null);
+                new CellIdentityLte(1, 1, 5, 1, Arrays.asList(1, 2), 10000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
 
         sendPhyChanConfigChange(new int[] {10000, 5000});
         sendRegStateUpdateForLteCellId(cellIdentity10);
@@ -2103,8 +2092,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testPhyChanBandwidthRatchetedOnPhyChanBandwidth() throws Exception {
         // LTE Cell with bandwidth = 10000
         CellIdentityLte cellIdentity10 =
-                new CellIdentityLte(1, 1, 1, 1, 10000, "1", "1", "test", "tst",
-                        Collections.emptyList(), null);
+                new CellIdentityLte(1, 1, 1, 1, Arrays.asList(1, 2), 10000, "1", "1", "test",
+                        "tst", Collections.emptyList(), null);
 
         sendRegStateUpdateForLteCellId(cellIdentity10);
         assertTrue(Arrays.equals(new int[] {10000}, sst.mSS.getCellBandwidths()));
@@ -2151,8 +2140,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         // Start state: Cell data only LTE + IWLAN
         CellIdentityLte cellIdentity =
-                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst",
-                        Collections.emptyList(), null);
+                new CellIdentityLte(1, 1, 5, 1, Arrays.asList(1, 2), 5000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
         changeRegStateWithIwlan(
                 // WWAN
                 NetworkRegistrationInfo.REGISTRATION_STATE_HOME, cellIdentity,
@@ -2307,8 +2296,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         sst.mSS = ss;
 
         CellIdentityLte cellId =
-                new CellIdentityLte(1, 1, 5, 1, 5000, "001", "01", "test", "tst",
-                        Collections.emptyList(), null);
+                new CellIdentityLte(1, 1, 5, 1, Arrays.asList(1, 2), 5000, "001", "01", "test",
+                        "tst", Collections.emptyList(), null);
         LteVopsSupportInfo lteVopsSupportInfo =
                 new LteVopsSupportInfo(LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED,
                     LteVopsSupportInfo.LTE_STATUS_NOT_SUPPORTED);
@@ -2367,16 +2356,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         verify(mEriManager, times(1)).loadEriFile();
     }
 
-    private void enableCdnr() {
-        mBundle.putBoolean(
-                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, true);
-        sendCarrierConfigUpdate();
-    }
-
     @Test
     public void testUpdateSpnDisplay_noService_displayEmergencyCallOnly() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2399,8 +2380,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_noServiceAndEmergencyCallNotAvailable_displayOOS() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2423,8 +2402,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_flightMode_displayOOS() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2446,8 +2423,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_spnNotEmptyAndWifiCallingEnabled_showSpnOnly() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2478,8 +2453,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     public void testUpdateSpnDisplay_spnEmptyAndWifiCallingEnabled_showPlmnOnly() {
         // set empty service provider name
         mBundle.putString(CarrierConfigManager.KEY_CARRIER_NAME_STRING, "");
-
-        enableCdnr();
+        sendCarrierConfigUpdate();
 
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
@@ -2508,8 +2482,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     public void testUpdateSpnDisplay_inServiceNoWifiCalling_showSpnAndPlmn() {
-        enableCdnr();
-
         // GSM phone
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
@@ -2540,13 +2512,13 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // set up unaffected locale (US) and clear the resource
         doReturn("us").when(mLocaleTracker).getCurrentCountry();
         mContextFixture.putStringArrayResource(
-                com.android.telephony.resources.R.array.config_display_no_service_when_sim_unready,
+                com.android.internal.R.array.config_display_no_service_when_sim_unready,
                 new String[0]);
         assertFalse(sst.shouldForceDisplayNoService());
 
         // set up the resource to include Germany
         mContextFixture.putStringArrayResource(
-                com.android.telephony.resources.R.array.config_display_no_service_when_sim_unready,
+                com.android.internal.R.array.config_display_no_service_when_sim_unready,
                 new String[]{"de"});
         doReturn("us").when(mLocaleTracker).getCurrentCountry();
         assertFalse(sst.shouldForceDisplayNoService());
@@ -2554,6 +2526,34 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         // mock the locale to Germany
         doReturn("de").when(mLocaleTracker).getCurrentCountry();
         assertTrue(sst.shouldForceDisplayNoService());
+    }
+
+    @Test
+    public void testUpdateSpnDisplayLegacy_WlanServiceNoWifiCalling_displayOOS() {
+        mBundle.putBoolean(
+                CarrierConfigManager.KEY_ENABLE_CARRIER_DISPLAY_NAME_RESOLVER_BOOL, false);
+        sendCarrierConfigUpdate();
+
+        // GSM phone
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        // voice out of service but data in service (connected to IWLAN)
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mServiceState).getState();
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getDataRegistrationState();
+        doReturn(TelephonyManager.NETWORK_TYPE_IWLAN).when(mServiceState).getDataNetworkType();
+        sst.mSS = mServiceState;
+
+        // wifi-calling is disable
+        doReturn(false).when(mPhone).isWifiCallingEnabled();
+
+        // update the spn
+        sst.updateSpnDisplay();
+
+        // Plmn should be shown, and the string is "No service"
+        Bundle b = getExtrasFromLastSpnUpdateIntent();
+        assertThat(b.getString(TelephonyManager.EXTRA_PLMN))
+                .isEqualTo(CARRIER_NAME_DISPLAY_NO_SERVICE);
+        assertThat(b.getBoolean(TelephonyManager.EXTRA_SHOW_PLMN)).isTrue();
     }
 
     private Bundle getExtrasFromLastSpnUpdateIntent() {
