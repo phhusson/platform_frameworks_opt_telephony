@@ -504,7 +504,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                             mRadioProxyCookie.incrementAndGet());
                     mRadioProxy.setResponseFunctions(mRadioResponse, mRadioIndication);
                 } else {
-                    mDisabledRadioServices.add(mPhoneId);
+                    //mDisabledRadioServices.add(mPhoneId);
                     riljLoge("getRadioProxy: mRadioProxy for "
                             + HIDL_SERVICE_NAME[mPhoneId] + " is disabled");
                 }
