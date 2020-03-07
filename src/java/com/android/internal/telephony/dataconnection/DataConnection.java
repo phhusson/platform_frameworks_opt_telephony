@@ -195,10 +195,12 @@ public class DataConnection extends StateMachine {
         @RequestNetworkType
         final int mRequestType;
         final int mSubId;
+        final boolean mIsPreferredApn;
 
         ConnectionParams(ApnContext apnContext, int profileId, int rilRadioTechnology,
                          Message onCompletedMsg, int connectionGeneration,
-                         @RequestNetworkType int requestType, int subId) {
+                         @RequestNetworkType int requestType, int subId,
+                         boolean isPreferredApn) {
             mApnContext = apnContext;
             mProfileId = profileId;
             mRilRat = rilRadioTechnology;
@@ -206,6 +208,7 @@ public class DataConnection extends StateMachine {
             mConnectionGeneration = connectionGeneration;
             mRequestType = requestType;
             mSubId = subId;
+            mIsPreferredApn = isPreferredApn;
         }
 
         @Override
@@ -216,6 +219,7 @@ public class DataConnection extends StateMachine {
                     + " mOnCompletedMsg=" + msgToString(mOnCompletedMsg)
                     + " mRequestType=" + DcTracker.requestTypeToString(mRequestType)
                     + " mSubId=" + mSubId
+                    + " mIsPreferredApn=" + mIsPreferredApn
                     + "}";
         }
     }
@@ -670,7 +674,7 @@ public class DataConnection extends StateMachine {
         msg.obj = cp;
 
         DataProfile dp = DcTracker.createDataProfile(mApnSetting, cp.mProfileId,
-                mApnSetting.equals(mDct.getPreferredApn()));
+                cp.mIsPreferredApn);
 
         // We need to use the actual modem roaming state instead of the framework roaming state
         // here. This flag is only passed down to ril_service for picking the correct protocol (for
@@ -1653,37 +1657,6 @@ public class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
-                    updateNetworkInfoSuspendState();
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
-                                DataConnection.this);
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
-                        mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
-                    }
-                    break;
-                case EVENT_DATA_CONNECTION_METEREDNESS_CHANGED:
-                    boolean isUnmetered = (boolean) msg.obj;
-                    if (isUnmetered == mUnmeteredOverride) {
-                        break;
-                    }
-                    mUnmeteredOverride = isUnmetered;
-                    // fallthrough
-                case EVENT_NR_FREQUENCY_CHANGED:
-                case EVENT_DATA_CONNECTION_ROAM_ON:
-                case EVENT_DATA_CONNECTION_ROAM_OFF:
-                case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED:
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
-                                DataConnection.this);
-                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
-                    }
-                    break;
-                case EVENT_KEEPALIVE_START_REQUEST:
-                case EVENT_KEEPALIVE_STOP_REQUEST:
-                    if (mNetworkAgent != null) {
-                        mNetworkAgent.sendSocketKeepaliveEvent(
-                                msg.arg1, SocketKeepalive.ERROR_INVALID_NETWORK);
-                    }
                     break;
                 default:
                     if (DBG) {
@@ -2258,9 +2231,38 @@ public class DataConnection extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
+                case EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    Pair<Integer, Integer> drsRatPair = (Pair<Integer, Integer>) ar.result;
+                    mDataRegState = drsRatPair.first;
+                    updateTcpBufferSizes(drsRatPair.second);
+                    mRilRat = drsRatPair.second;
+                    if (DBG) {
+                        log("DcActiveState: EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED"
+                                + " drs=" + mDataRegState
+                                + " mRilRat=" + mRilRat);
+                    }
+                    updateNetworkInfoSuspendState();
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
+                                DataConnection.this);
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo, DataConnection.this);
+                        mNetworkAgent.sendLinkProperties(mLinkProperties, DataConnection.this);
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_DATA_CONNECTION_METEREDNESS_CHANGED:
+                    boolean isUnmetered = (boolean) msg.obj;
+                    if (isUnmetered == mUnmeteredOverride) {
+                        retVal = HANDLED;
+                        break;
+                    }
+                    mUnmeteredOverride = isUnmetered;
+                    // fallthrough
+                case EVENT_NR_FREQUENCY_CHANGED:
                 case EVENT_DATA_CONNECTION_ROAM_ON:
                 case EVENT_DATA_CONNECTION_ROAM_OFF:
-                case EVENT_DATA_CONNECTION_METEREDNESS_CHANGED:
                 case EVENT_DATA_CONNECTION_OVERRIDE_CHANGED: {
                     if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(getNetworkCapabilities(),
@@ -2613,16 +2615,17 @@ public class DataConnection extends StateMachine {
      *                             ignored if obsolete.
      * @param requestType Data request type
      * @param subId the subscription id associated with this data connection.
+     * @param isApnPreferred whether or not the apn is preferred.
      */
     public void bringUp(ApnContext apnContext, int profileId, int rilRadioTechnology,
                         Message onCompletedMsg, int connectionGeneration,
-                        @RequestNetworkType int requestType, int subId) {
+                        @RequestNetworkType int requestType, int subId, boolean isApnPreferred) {
         if (DBG) {
             log("bringUp: apnContext=" + apnContext + " onCompletedMsg=" + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_CONNECT,
                 new ConnectionParams(apnContext, profileId, rilRadioTechnology, onCompletedMsg,
-                        connectionGeneration, requestType, subId));
+                        connectionGeneration, requestType, subId, isApnPreferred));
     }
 
     /**
