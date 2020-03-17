@@ -93,6 +93,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.IccVmNotSupportedException;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.IsimUiccRecords;
@@ -175,7 +176,7 @@ public class GsmCdmaPhone extends Phone {
     private SIMRecords mSimRecords;
 
     // For non-persisted manual network selection
-    private String mManualNetworkSelectionPlmn = "";
+    private String mManualNetworkSelectionPlmn;
 
     //Common
     // Instance Variables
@@ -1917,7 +1918,7 @@ public class GsmCdmaPhone extends Phone {
             mManualNetworkSelectionPlmn = nsm.operatorNumeric;
         } else {
         //on Phone0 in emergency mode (no SIM), or in some races then clear the cache
-            mManualNetworkSelectionPlmn = "";
+            mManualNetworkSelectionPlmn = null;
             Rlog.e(LOG_TAG, "Cannot update network selection due to invalid subId "
                     + subId);
         }
@@ -4254,7 +4255,8 @@ public class GsmCdmaPhone extends Phone {
         String iccId = slot.getIccId();
         if (iccId == null) return;
 
-        SubscriptionInfo info = SubscriptionController.getInstance().getSubInfoForIccId(iccId);
+        SubscriptionInfo info = SubscriptionController.getInstance().getSubInfoForIccId(
+                IccUtils.stripTrailingFs(iccId));
 
         // If info is null, it could be a new subscription. By default we enable it.
         boolean expectedValue = info == null ? true : info.areUiccApplicationsEnabled();
