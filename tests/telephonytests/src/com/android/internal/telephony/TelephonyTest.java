@@ -397,6 +397,7 @@ public abstract class TelephonyTest {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
         TelephonyManager.disableServiceHandleCaching();
+        SubscriptionController.disableCaching();
 
         mPhones = new Phone[] {mPhone};
         mImsCallProfile = new ImsCallProfile();
@@ -670,6 +671,7 @@ public abstract class TelephonyTest {
 
         restoreInstances();
         TelephonyManager.enableServiceHandleCaching();
+        SubscriptionController.enableCaching();
     }
 
     protected static void logd(String s) {
@@ -786,6 +788,13 @@ public abstract class TelephonyTest {
                 : PackageManager.PERMISSION_DENIED).when(
                 mMockPermissionManager).checkDeviceIdentifierAccess(any(), any(), any(), anyInt(),
                 anyInt());
+    }
+
+    protected void setCarrierPrivileges(boolean hasCarrierPrivileges) {
+        doReturn(mTelephonyManager).when(mTelephonyManager).createForSubscriptionId(anyInt());
+        doReturn(hasCarrierPrivileges ? TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS
+                : TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS).when(
+                mTelephonyManager).getCarrierPrivilegeStatus(anyInt());
     }
 
     protected final void waitForHandlerAction(Handler h, long timeoutMillis) {
