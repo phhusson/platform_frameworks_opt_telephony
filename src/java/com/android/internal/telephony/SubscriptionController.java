@@ -332,6 +332,7 @@ public class SubscriptionController extends ISub.Stub {
 
         // Initial invalidate activates caching.
         invalidateDefaultSubIdCaches();
+        invalidateDefaultDataSubIdCaches();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
@@ -3475,7 +3476,7 @@ public class SubscriptionController extends ISub.Stub {
      * Helper function to create selection argument of a list of subId.
      * The result should be: "in (subId1, subId2, ...)".
      */
-    private String getSelectionForSubIdList(int[] subId) {
+    public static String getSelectionForSubIdList(int[] subId) {
         StringBuilder selection = new StringBuilder();
         selection.append(SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID);
         selection.append(" IN (");
@@ -4076,8 +4077,10 @@ public class SubscriptionController extends ISub.Stub {
      */
     private void setGlobalSetting(String name, int value) {
         Settings.Global.putInt(mContext.getContentResolver(), name, value);
-        if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION
-                 || name == Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION) {
+        if (name == Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION) {
+            invalidateDefaultDataSubIdCaches();
+            invalidateDefaultSubIdCaches();
+        } else if (name == Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION) {
             invalidateDefaultSubIdCaches();
         }
     }
@@ -4088,6 +4091,15 @@ public class SubscriptionController extends ISub.Stub {
     private static void invalidateDefaultSubIdCaches() {
         if (sCachingEnabled) {
             SubscriptionManager.invalidateDefaultSubIdCaches();
+        }
+    }
+
+    /**
+     * @hide
+     */
+    private static void invalidateDefaultDataSubIdCaches() {
+        if (sCachingEnabled) {
+            SubscriptionManager.invalidateDefaultDataSubIdCaches();
         }
     }
 
