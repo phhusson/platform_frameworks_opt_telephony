@@ -244,7 +244,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    protected static class WatchedInt {
+    public static class WatchedInt {
         private int mValue;
 
         public WatchedInt(int initialValue) {
@@ -738,6 +738,19 @@ public class SubscriptionController extends ISub.Stub {
      * @hide
      */
     public SubscriptionInfo getSubscriptionInfo(int subId) {
+        // check cache for active subscriptions first, before querying db
+        for (SubscriptionInfo subInfo : mCacheActiveSubInfoList) {
+            if (subInfo.getSubscriptionId() == subId) {
+                return subInfo;
+            }
+        }
+        // check cache for opportunistic subscriptions too, before querying db
+        for (SubscriptionInfo subInfo : mCacheOpportunisticSubInfoList) {
+            if (subInfo.getSubscriptionId() == subId) {
+                return subInfo;
+            }
+        }
+
         List<SubscriptionInfo> subInfoList = getSubInfo(
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + subId, null);
         if (subInfoList == null || subInfoList.isEmpty()) return null;
@@ -3930,6 +3943,17 @@ public class SubscriptionController extends ISub.Stub {
             sSlotIndexToSubIds.clearSubIdList(slotIndex);
             sSlotIndexToSubIds.addToSubIdList(slotIndex, subId);
         }
+
+
+        // Remove the slot from sSlotIndexToSubIds if it has the same sub id with the added slot
+        for (Entry<Integer, ArrayList<Integer>> entry : sSlotIndexToSubIds.entrySet()) {
+            if (entry.getKey() != slotIndex && entry.getValue() != null
+                    && entry.getValue().contains(subId)) {
+                logdl("addToSubIdList - remove " + entry.getKey());
+                sSlotIndexToSubIds.remove(entry.getKey());
+            }
+        }
+
         if (DBG) logdl("slotIndex, subId combo is added to the map.");
         return true;
     }
