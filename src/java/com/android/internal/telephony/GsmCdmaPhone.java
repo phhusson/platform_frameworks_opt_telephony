@@ -1728,8 +1728,8 @@ public class GsmCdmaPhone extends Phone {
     public String getVoiceMailAlphaTag() {
         String ret = "";
 
-        if (isPhoneTypeGsm()) {
-            IccRecords r = mIccRecords.get();
+        if (isPhoneTypeGsm() || mSimRecords != null) {
+            IccRecords r = isPhoneTypeGsm() ? mIccRecords.get() : mSimRecords;
 
             ret = (r != null) ? r.getVoiceMailAlphaTag() : "";
         }
@@ -2443,8 +2443,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void updateServiceLocation() {
-        mSST.enableSingleLocationUpdate();
+    public void updateServiceLocation(WorkSource workSource) {
+        mSST.enableSingleLocationUpdate(workSource);
     }
 
     @Override
