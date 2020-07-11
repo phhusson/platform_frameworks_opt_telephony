@@ -21,7 +21,6 @@ import static com.android.internal.telephony.SmsResponse.NO_ERROR_CODE;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.AsyncResult;
 import android.os.Message;
-import android.provider.Telephony.Sms.Intents;
 import android.telephony.ServiceState;
 import android.util.Pair;
 
@@ -132,15 +131,15 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     }
 
     /**
-     * Called when a status report is received.  This should correspond to
-     * a previously successful SEND.
+     * Called when a status report is received. This should correspond to a previously successful
+     * SEND.
      *
-     * @param ar AsyncResult passed into the message handler.  ar.result should
-     *           be a String representing the status report PDU, as ASCII hex.
+     * @param ar AsyncResult passed into the message handler. ar.result should be a byte array for
+     *           the status report PDU.
      */
     private void handleStatusReport(AsyncResult ar) {
         byte[] pdu = (byte[]) ar.result;
-        SmsMessage sms = SmsMessage.newFromCDS(pdu);
+        SmsMessage sms = SmsMessage.createFromPdu(pdu);
         boolean handled = false;
 
         if (sms != null) {
@@ -165,7 +164,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                         messageRef, getFormat(), pdu);
             }
         }
-        mCi.acknowledgeLastIncomingGsmSms(true, Intents.RESULT_SMS_HANDLED, null);
+        mCi.acknowledgeLastIncomingGsmSms(true, 0 /* cause */, null);
     }
 
     /** {@inheritDoc} */
