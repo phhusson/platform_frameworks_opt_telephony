@@ -260,15 +260,6 @@ public abstract class SMSDispatcher extends Handler {
         Rlog.d(TAG, "handleStatusReport() called with no subclass.");
     }
 
-    /* TODO: Need to figure out how to keep track of status report routing in a
-     *       persistent manner. If the phone process restarts (reboot or crash),
-     *       we will lose this list and any status reports that come in after
-     *       will be dropped.
-     */
-    /** Sent messages awaiting a delivery status report. */
-    @UnsupportedAppUsage
-    protected final ArrayList<SmsTracker> deliveryPendingList = new ArrayList<SmsTracker>();
-
     /**
      * Handles events coming from the phone stack. Overridden from handler.
      *
@@ -766,8 +757,8 @@ public abstract class SMSDispatcher extends Handler {
             }
 
             if (tracker.mDeliveryIntent != null) {
-                // Expecting a status report.  Add it to the list.
-                deliveryPendingList.add(tracker);
+                // Expecting a status report. Put this tracker to the map.
+                mSmsDispatchersController.putDeliveryPendingTracker(tracker);
             }
             tracker.onSent(mContext);
             mPhone.notifySmsSent(tracker.mDestAddress);
@@ -869,29 +860,6 @@ public abstract class SMSDispatcher extends Handler {
                 return SmsManager.RESULT_ERROR_FDN_CHECK_FAILURE;
             default:
                 return RESULT_ERROR_GENERIC_FAILURE;
-        }
-    }
-
-    /**
-     * Handles outbound message when the phone is not in service.
-     *
-     * @param ss     Current service state.  Valid values are:
-     *                  OUT_OF_SERVICE
-     *                  EMERGENCY_ONLY
-     *                  POWER_OFF
-     * @param sentIntent the PendingIntent to send the error to
-     */
-    protected static void handleNotInService(int ss, PendingIntent sentIntent) {
-        if (sentIntent != null) {
-            try {
-                if (ss == ServiceState.STATE_POWER_OFF) {
-                    sentIntent.send(RESULT_ERROR_RADIO_OFF);
-                } else {
-                    sentIntent.send(RESULT_ERROR_NO_SERVICE);
-                }
-            } catch (CanceledException ex) {
-                Rlog.e(TAG, "Failed to send result");
-            }
         }
     }
 
