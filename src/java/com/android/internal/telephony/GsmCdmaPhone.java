@@ -644,8 +644,9 @@ public class GsmCdmaPhone extends Phone {
                         && !isEmergencyData)) {
             return new PreciseDataConnectionState.Builder()
                     .setState(TelephonyManager.DATA_DISCONNECTED)
-                    .setApnTypes(ApnSetting.getApnTypesBitmaskFromString(apnType))
-                    .setApn(apnType)
+                    .setApnSetting(new ApnSetting.Builder()
+                            .setApnTypeBitmask(ApnSetting.getApnTypesBitmaskFromString(apnType))
+                            .build())
                     .build();
         }
 
@@ -4028,7 +4029,7 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public IccCard getIccCard() {
         // This function doesn't return null for backwards compatability purposes.
-        // To differentiate between cases where SIM is absent vs. unknown we return a dummy
+        // To differentiate between cases where SIM is absent vs. unknown we return a placeholder
         // IccCard with the sim state set.
         IccCard card = getUiccProfile();
         if (card != null) {
