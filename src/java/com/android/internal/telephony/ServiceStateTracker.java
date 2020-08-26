@@ -160,6 +160,10 @@ public class ServiceStateTracker extends Handler {
     public ServiceState mSS;
     @UnsupportedAppUsage
     private ServiceState mNewSS;
+    // A placeholder service state which will always be out of service. This is broadcast to
+    // listeners when the subscription ID for a phone becomes invalid so that they get a final
+    // state update.
+    private final ServiceState mOutOfServiceSS;
 
     // This is the minimum interval at which CellInfo requests will be serviced by the modem.
     // Any requests that arrive within MinInterval of the previous reuqest will simply receive the
@@ -439,6 +443,14 @@ public class ServiceStateTracker extends Handler {
                     // displayed on the UI again. The old SPN update intents sent to
                     // MobileSignalController earlier were actually ignored due to invalid sub id.
                     updateSpnDisplay();
+                } else {
+                    if (SubscriptionManager.isValidSubscriptionId(
+                            ServiceStateTracker.this.mPrevSubId)) {
+                        // just went from valid to invalid subId, so notify phone state listeners
+                        // with final broadcast
+                        mPhone.notifyServiceStateChangedForSubId(mOutOfServiceSS,
+                                ServiceStateTracker.this.mPrevSubId);
+                    }
                 }
                 // update voicemail count and notify message waiting changed
                 mPhone.updateVoiceMail();
@@ -529,6 +541,8 @@ public class ServiceStateTracker extends Handler {
     /** To identify whether EVENT_SIM_READY is received or not */
     private boolean mIsSimReady = false;
 
+    private String mLastKnownNetworkCountry = "";
+
     @UnsupportedAppUsage
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -554,6 +568,12 @@ public class ServiceStateTracker extends Handler {
             } else if (intent.getAction().equals(ACTION_RADIO_OFF)) {
                 mAlarmSwitch = false;
                 powerOffRadioSafely();
+            } else if (intent.getAction().equals(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)) {
+                String lastKnownNetworkCountry = intent.getStringExtra(
+                        TelephonyManager.EXTRA_LAST_KNOWN_NETWORK_COUNTRY);
+                if (!mLastKnownNetworkCountry.equals(lastKnownNetworkCountry)) {
+                    updateSpnDisplay();
+                }
             }
         }
     };
@@ -623,6 +643,9 @@ public class ServiceStateTracker extends Handler {
                 .isVoiceCapable();
         mUiccController = UiccController.getInstance();
 
+        mOutOfServiceSS = new ServiceState();
+        mOutOfServiceSS.setStateOutOfService();
+
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
@@ -674,6 +697,9 @@ public class ServiceStateTracker extends Handler {
         context.registerReceiver(mIntentReceiver, filter);
         filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        context.registerReceiver(mIntentReceiver, filter);
+        filter = new IntentFilter();
+        filter.addAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED);
         context.registerReceiver(mIntentReceiver, filter);
 
         mPhone.notifyOtaspChanged(TelephonyManager.OTASP_UNINITIALIZED);
@@ -1160,8 +1186,8 @@ public class ServiceStateTracker extends Handler {
                     mCdnr.updateEfFromUsim(null /* Usim */);
                 }
                 onUpdateIccAvailability();
-                if (mUiccApplcation != null
-                        && mUiccApplcation.getState() != AppState.APPSTATE_READY) {
+                if (mUiccApplcation == null
+                        || mUiccApplcation.getState() != AppState.APPSTATE_READY) {
                     mIsSimReady = false;
                     updateSpnDisplay();
                 }
@@ -2713,8 +2739,12 @@ public class ServiceStateTracker extends Handler {
             //    EXTRA_PLMN = plmn
 
             // 4) No service due to power off, aka airplane mode
-            //    EXTRA_SHOW_PLMN = false
+            //    EXTRA_SHOW_PLMN = true
             //    EXTRA_PLMN = null
+
+            // 5) Airplane mode but connected to WiFi with WFC disabled
+            //    EXTRA_SHOW_PLMN = true
+            //    EXTRA_PLMN = plmn
 
             IccRecords iccRecords = mIccRecords;
             int rule = getCarrierNameDisplayBitmask(mSS);
@@ -2748,10 +2778,16 @@ public class ServiceStateTracker extends Handler {
                 if (DBG) log("updateSpnDisplay: rawPlmn = " + plmn);
             } else {
                 // Power off state, such as airplane mode, show plmn as "No service"
+                // unless connected to WiFi with WFC disabled, then show plmn
                 showPlmn = true;
-                plmn = Resources.getSystem()
-                        .getText(com.android.internal.R.string.lockscreen_carrier_default)
-                        .toString();
+                if (mPhone.getImsPhone() != null && !mPhone.getImsPhone().isWifiCallingEnabled()
+                        && mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
+                    plmn = mSS.getOperatorAlpha();
+                } else {
+                    plmn = Resources.getSystem()
+                            .getText(com.android.internal.R.string.lockscreen_carrier_default)
+                            .toString();
+                }
                 if (DBG) log("updateSpnDisplay: radio is off w/ showPlmn="
                         + showPlmn + " plmn=" + plmn);
             }
@@ -2854,9 +2890,9 @@ public class ServiceStateTracker extends Handler {
         if (ArrayUtils.isEmpty(countriesWithNoService)) {
             return false;
         }
-        String currentCountry = mLocaleTracker.getCurrentCountry();
+        mLastKnownNetworkCountry = mLocaleTracker.getLastKnownCountryIso();
         for (String country : countriesWithNoService) {
-            if (country.equalsIgnoreCase(currentCountry)) {
+            if (country.equalsIgnoreCase(mLastKnownNetworkCountry)) {
                 return true;
             }
         }
@@ -3454,13 +3490,15 @@ public class ServiceStateTracker extends Handler {
 
             tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
 
-            // If the OPERATOR command hasn't returned a valid operator, but if the device has
-            // camped on a cell either to attempt registration or for emergency services, then
-            // for purposes of setting the locale, we don't care if registration fails or is
+            // If the OPERATOR command hasn't returned a valid operator or the device is on IWLAN (
+            // because operatorNumeric would be SIM's mcc/mnc when device is on IWLAN), but if the
+            // device has camped on a cell either to attempt registration or for emergency services,
+            // then for purposes of setting the locale, we don't care if registration fails or is
             // incomplete.
             // CellIdentity can return a null MCC and MNC in CDMA
             String localeOperator = operatorNumeric;
-            if (isInvalidOperatorNumeric(operatorNumeric)) {
+            if (isInvalidOperatorNumeric(operatorNumeric)
+                    || mSS.getDataNetworkType() == TelephonyManager.NETWORK_TYPE_IWLAN) {
                 for (CellIdentity cid : prioritizedCids) {
                     if (!TextUtils.isEmpty(cid.getPlmn())) {
                         localeOperator = cid.getPlmn();
