@@ -22,6 +22,8 @@ import static android.telephony.TelephonyManager.NETWORK_TYPE_NR;
 import static android.telephony.data.ApnSetting.PROTOCOL_IPV4V6;
 import static android.telephony.data.ApnSetting.TYPE_DEFAULT;
 import static android.telephony.data.ApnSetting.TYPE_IA;
+import static android.telephony.data.DataCallResponse.HANDOVER_FAILURE_MODE_DO_FALLBACK;
+import static android.telephony.data.DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY;
 
 import static com.android.internal.telephony.RILConstants.DATA_PROFILE_DEFAULT;
 import static com.android.internal.telephony.RILConstants.DATA_PROFILE_INVALID;
@@ -326,7 +328,7 @@ public class DcTracker extends Handler {
     private boolean mNrSaSub6Unmetered = false;
     private boolean mRoamingUnmetered = false;
 
-    /* List of SubscriptionPlans, updated on SubscriptionManager.setSubscriptionPlans */
+    /* List of SubscriptionPlans, updated when initialized and when plans are changed. */
     private List<SubscriptionPlan> mSubscriptionPlans = null;
 
     @SimState
@@ -421,6 +423,7 @@ public class DcTracker extends Handler {
             if (mPhone == null || mPhone.getSubId() != subId) return;
 
             mSubscriptionPlans = plans == null ? null : Arrays.asList(plans);
+            if (DBG) log("SubscriptionPlans changed: " + mSubscriptionPlans);
             reevaluateUnmeteredConnections();
         }
     };
@@ -2337,6 +2340,13 @@ public class DcTracker extends Handler {
         setDefaultPreferredApnIfNeeded();
         read5GConfiguration();
         registerSettingsObserver();
+        SubscriptionPlan[] plans = mNetworkPolicyManager.getSubscriptionPlans(
+                mPhone.getSubId(), mPhone.getContext().getOpPackageName());
+        if (plans != null) {
+            mSubscriptionPlans = Arrays.asList(plans);
+            if (DBG) log("SubscriptionPlans initialized: " + mSubscriptionPlans);
+            reevaluateUnmeteredConnections();
+        }
         mConfigReady = true;
     }
 
@@ -2487,15 +2497,27 @@ public class DcTracker extends Handler {
         b.putInt(DATA_COMPLETE_MSG_EXTRA_REQUEST_TYPE, requestType);
         b.putInt(DATA_COMPLETE_MSG_EXTRA_TRANSPORT_TYPE, transport);
         b.putBoolean(DATA_COMPLETE_MSG_EXTRA_HANDOVER_FAILURE_FALLBACK,
-                (handoverFailureMode == DataCallResponse.HANDOVER_FAILURE_MODE_DO_FALLBACK
-                        || (handoverFailureMode
-                        == DataCallResponse.HANDOVER_FAILURE_MODE_LEGACY
-                        && cause == DataFailCause.HANDOFF_PREFERENCE_CHANGED)));
+                shouldFallbackOnFailedHandover(handoverFailureMode, requestType, cause));
         message.sendToTarget();
     }
 
+    private boolean shouldFallbackOnFailedHandover(@HandoverFailureMode int handoverFailureMode,
+                               @RequestNetworkType int requestType,
+                               @DataFailureCause int cause) {
+        if (requestType != REQUEST_TYPE_HANDOVER) {
+            //The fallback is only relevant if the request is a handover
+            return false;
+        } else if (handoverFailureMode == HANDOVER_FAILURE_MODE_DO_FALLBACK) {
+            return true;
+        } else if (handoverFailureMode == HANDOVER_FAILURE_MODE_LEGACY) {
+            return cause == DataFailCause.HANDOFF_PREFERENCE_CHANGED;
+        } else {
+            return false;
+        }
+    }
+
     public void enableApn(@ApnType int apnType, @RequestNetworkType int requestType,
-                          Message onCompleteMsg) {
+            Message onCompleteMsg) {
         sendMessage(obtainMessage(DctConstants.EVENT_ENABLE_APN, apnType, requestType,
                 onCompleteMsg));
     }
