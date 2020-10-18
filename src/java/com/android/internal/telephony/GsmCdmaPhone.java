@@ -1813,37 +1813,45 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public int getCarrierId() {
-        return mCarrierResolver.getCarrierId();
+        return mCarrierResolver != null
+                ? mCarrierResolver.getCarrierId() : super.getCarrierId();
     }
 
     @Override
     public String getCarrierName() {
-        return mCarrierResolver.getCarrierName();
+        return mCarrierResolver != null
+                ? mCarrierResolver.getCarrierName() : super.getCarrierName();
     }
 
     @Override
     public int getMNOCarrierId() {
-        return mCarrierResolver.getMnoCarrierId();
+        return mCarrierResolver != null
+                ? mCarrierResolver.getMnoCarrierId() : super.getMNOCarrierId();
     }
 
     @Override
     public int getSpecificCarrierId() {
-        return mCarrierResolver.getSpecificCarrierId();
+        return mCarrierResolver != null
+                ? mCarrierResolver.getSpecificCarrierId() : super.getSpecificCarrierId();
     }
 
     @Override
     public String getSpecificCarrierName() {
-        return mCarrierResolver.getSpecificCarrierName();
+        return mCarrierResolver != null
+                ? mCarrierResolver.getSpecificCarrierName() : super.getSpecificCarrierName();
     }
 
     @Override
     public void resolveSubscriptionCarrierId(String simState) {
-        mCarrierResolver.resolveSubscriptionCarrierId(simState);
+        if (mCarrierResolver != null) {
+            mCarrierResolver.resolveSubscriptionCarrierId(simState);
+        }
     }
 
     @Override
     public int getCarrierIdListVersion() {
-        return mCarrierResolver.getCarrierListVersion();
+        return mCarrierResolver != null
+                ? mCarrierResolver.getCarrierListVersion() : super.getCarrierIdListVersion();
     }
 
     @Override
@@ -2777,6 +2785,8 @@ public class GsmCdmaPhone extends Phone {
                 break;
 
             case EVENT_CARRIER_CONFIG_CHANGED:
+                // Obtain new radio capabilities from the modem, since some are SIM-dependent
+                mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
                 // Only check for the voice radio tech if it not going to be updated by the voice
                 // registration changes.
                 if (!mContext.getResources().getBoolean(
