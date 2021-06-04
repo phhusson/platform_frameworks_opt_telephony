@@ -80,6 +80,7 @@ import android.telephony.CellLocation;
 import android.telephony.DataFailCause;
 import android.telephony.NetworkRegistrationInfo;
 import android.telephony.PcoData;
+import android.telephony.PreciseDataConnectionState;
 import android.telephony.ServiceState;
 import android.telephony.ServiceState.RilRadioTechnology;
 import android.telephony.SubscriptionManager;
@@ -1080,11 +1081,21 @@ public class DcTracker extends Handler {
         for (ApnConfigType apnConfigType : types) {
             ApnContext apnContext = new ApnContext(mPhone, apnConfigType.getType(), mLogTag, this,
                     apnConfigType.getPriority());
+            int bitmask = ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType());
             mPrioritySortedApnContexts.add(apnContext);
             mApnContexts.put(apnContext.getApnType(), apnContext);
-            mApnContextsByType.put(ApnSetting.getApnTypesBitmaskFromString(apnContext.getApnType()),
-                    apnContext);
-
+            mApnContextsByType.put(bitmask, apnContext);
+            // Notify listeners that all data is disconnected when DCT is initialized.
+            // Once connections are established, DC will then notify that data is connected.
+            // This is to prevent the case where the phone process crashed but we don't notify
+            // listeners that data was disconnected, so they may be stuck in a connected state.
+            mPhone.notifyDataConnection(new PreciseDataConnectionState.Builder()
+                    .setTransportType(mTransportType)
+                    .setState(TelephonyManager.DATA_DISCONNECTED)
+                    .setApnSetting(new ApnSetting.Builder()
+                            .setApnTypeBitmask(bitmask).buildWithoutCheck())
+                    .setNetworkType(getDataRat())
+                    .build());
             log("initApnContexts: apnContext=" + ApnSetting.getApnTypeString(
                     apnConfigType.getType()));
         }
@@ -1447,6 +1458,12 @@ public class DcTracker extends Handler {
             if (mTransportType != mPhone.getTransportManager().getCurrentTransport(
                     apnContext.getApnTypeBitmask()) && requestType != REQUEST_TYPE_HANDOVER) {
                 reasons.add(DataDisallowedReasonType.ON_OTHER_TRANSPORT);
+            }
+
+            // Check if the device is under data throttling.
+            long retryTime = mDataThrottler.getRetryTime(apnContext.getApnTypeBitmask());
+            if (retryTime > SystemClock.elapsedRealtime()) {
+                reasons.add(DataDisallowedReasonType.DATA_THROTTLED);
             }
         }
 
