@@ -1468,7 +1468,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         IRadio radioProxy = getRadioProxy(result);
         if (radioProxy != null) {
-             if (RILJ_LOGV) riljLog("getSignalStrength radioproxy not null");		
+             if (RILJ_LOGV) riljLog("getSignalStrength radioproxy not null");
             RILRequest rr = obtainRequest(RIL_REQUEST_SIGNAL_STRENGTH, result,
                     mRILDefaultWorkSource);
 
@@ -6710,8 +6710,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 new CellSignalStrengthTdscdma(), new CellSignalStrengthLte(),
                 new CellSignalStrengthNr());
     }
-    
-    
+
+
     /**
      * Fixup for SignalStrength for Huawei device
      * @param signalStrength the initial signal strength
@@ -6736,8 +6736,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
         int lteTimingAdvance = signalStrength.lte.timingAdvance;
         int mGsm = 0;
         int mRat = 0;
-        
-        
+
+
         // Calcul level with Rssnr, Rsrq, Rsrp value - so specify KEY_PARAMETERS_USED_FOR_LTE_SIGNAL_BAR_INT (parameters_used_for_lte_signal_bar_int) to use this 3 values
      	// <UL>
      	//  <LI>RSRP = 1 << 0</LI>
@@ -6782,27 +6782,27 @@ public class RIL extends BaseCommands implements CommandsInterface {
             } else if (lteRsrp >= -140) { // None or Unknown
                 lteRsrq = -21;
                 lteRssnr = -200;
-            }      
-        }  
-		
+            }
+        }
+
 
 	// 4G - LTE
 	// .lte = {.signalStrength = 99, .rsrp = -104, .rsrq = -16, .rssnr = -4, .cqi = 2147483647, .timingAdvance = -1},
 	// public CellSignalStrengthLte(int rssi, int rsrp, int rsrq, int rssnr, int cqi, int timingAdvance) {
 	CellSignalStrengthLte lteStrength = new CellSignalStrengthLte(SignalStrength.INVALID,
-						lteRsrp,  
+						lteRsrp,
 						lteRsrq,
 						lteRssnr,
 						lteCqi,
 						lteTimingAdvance);
 
-	riljLog("Huawei signal : LTE dbm : " + String.valueOf(lteStrength.getDbm()) + 
-			", level : " + String.valueOf(lteStrength.getLevel()) + 
+	riljLog("Huawei signal : LTE dbm : " + String.valueOf(lteStrength.getDbm()) +
+			", level : " + String.valueOf(lteStrength.getLevel()) +
 			", Rsrp  : " + String.valueOf(lteStrength.getRsrp()) +
 			", Rsrq  : " + String.valueOf(lteStrength.getRsrq()) +
 			", Rssi  : " + String.valueOf(lteStrength.getRssi()) +
 			", Rssnr  : " + String.valueOf(lteStrength.getRssnr()));
-			
+
 	// GSM
 	// .gw = {.signalStrength = -91, .bitErrorRate = -1, .timingAdvance = 0}
 	// public CellSignalStrengthGsm(int rssi, int ber, int ta) {
@@ -6812,22 +6812,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
 						gsmBitErrorRate,
 						gsmTimingAdvance);
 
-	riljLog("Huawei signal : GSM dbm : " + String.valueOf(gsmStrength.getDbm()) + 
-			", errorrate : " + String.valueOf(gsmStrength.getBitErrorRate()) + 
+	riljLog("Huawei signal : GSM dbm : " + String.valueOf(gsmStrength.getDbm()) +
+			", errorrate : " + String.valueOf(gsmStrength.getBitErrorRate()) +
 			", timingadvance  : " + String.valueOf(gsmStrength.getTimingAdvance()));
 
 	// Perhaps add also gsm signalStrength
 	return new SignalStrength(
-			new CellSignalStrengthCdma(), 
+			new CellSignalStrengthCdma(),
 			gsmStrength,
 			new CellSignalStrengthWcdma(),
-			new CellSignalStrengthTdscdma(), 
+			new CellSignalStrengthTdscdma(),
 			lteStrength,
-			new CellSignalStrengthNr());	
-		
+			new CellSignalStrengthNr());
+
 	}
-    
-    
+
+
 
     /**
      * Convert CellInfo defined in 1.4/types.hal to CellInfo type.

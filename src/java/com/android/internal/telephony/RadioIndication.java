@@ -234,7 +234,7 @@ public class RadioIndication extends IRadioIndication.Stub {
     public void currentSignalStrength(int indicationType,
                                       android.hardware.radio.V1_0.SignalStrength signalStrength) {
         SignalStrength ss = null;
-        
+
         mRil.processIndication(indicationType);
 
 	// Note this is set to "verbose" because it happens frequently
@@ -252,7 +252,7 @@ public class RadioIndication extends IRadioIndication.Stub {
 		SignalStrength ssInitial = new SignalStrength(signalStrength);
 		ss = mRil.fixupSignalStrength10(ssInitial);
 	}
-		
+
 
 	// Note this is set to "verbose" because it happens frequently
 	if (RIL.RILJ_LOGV) mRil.unsljLogvRet(RIL_UNSOL_SIGNAL_STRENGTH, ss);
