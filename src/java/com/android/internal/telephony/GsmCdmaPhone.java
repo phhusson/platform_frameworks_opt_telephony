@@ -3020,7 +3020,7 @@ public class GsmCdmaPhone extends Phone {
                 String version = (String)ar.result;
                 if (version != null) {
                     int length = version.length();
-                    final int MAX_VERSION_LEN = SystemProperties.PROP_VALUE_MAX/2;
+                    final int MAX_VERSION_LEN = SystemProperties.PROP_VALUE_MAX/2 - 2;
                     TelephonyManager.from(mContext).setBasebandVersionForPhone(getPhoneId(),
                             length <= MAX_VERSION_LEN ? version
                                 : version.substring(length - MAX_VERSION_LEN, length));
