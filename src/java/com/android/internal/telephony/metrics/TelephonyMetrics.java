@@ -2318,6 +2318,19 @@ public class TelephonyMetrics {
     }
 
     /**
+     * Write Send SMS event (backwards-compatible method for R and earlier IMS implementations)
+     *
+     * @param phoneId Phone id
+     * @param rilSerial RIL request serial number
+     * @param tech SMS RAT
+     * @param format SMS format. Either {@link SmsMessage#FORMAT_3GPP} or
+     *         {@link SmsMessage#FORMAT_3GPP2}.
+     */
+    public void writeRilSendSms(int phoneId, int rilSerial, int tech, int format) {
+    	writeRilSendSms(phoneId, rilSerial, tech, format, 0);
+    }
+
+    /**
      * Write Send SMS event using ImsService. Expecting response from
      * {@link #writeOnSmsSolicitedResponse}.
      *
